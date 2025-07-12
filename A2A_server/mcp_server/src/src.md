@@ -1,0 +1,1 @@
+This directory contains the source code for the Multi-Agent Coordination Protocol (MCP) server. It will house the core logic for agent communication, task orchestration, and API integrations, adhering to the A2A protocol.
