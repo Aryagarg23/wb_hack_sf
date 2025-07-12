@@ -4,9 +4,9 @@ from sentence_transformers import SentenceTransformer
 from backend.tools.concept_categorizer import get_concept
 
 # Config for database stuff
+model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
 
 def find_similar_concepts(query: Query, top_k=5):
-    model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
     content = query.getContent()
     embedding = model.encode(content).tolist()
 
@@ -34,6 +34,29 @@ def find_similar_concepts(query: Query, top_k=5):
 def create_concept(query: Query):
     content = query.getContent()
     concept = get_concept(content)
+    intent = query.intent # Assuming the roberta handles this
+    embedding = model.encode(concept).tolist()
+
+    concept = Concept(name=concept, intent=intent, embedding=embedding)
+
+    cypher_query = """
+    MERGE (c:Concept {name: $concept_name})
+    ON CREATE SET c.intent = $intent, c.embedding = $embedding
+
+    MERGE (q:Query {content: $query_content})
+    ON CREATE SET q.intent = $intent
+
+    MERGE (c)-[:SEARCHED_BY]->(q)
+    """
+
+    parameters = {
+        "concept_name": concept.getName(),
+        "intent": concept.intent,
+        "embedding": concept.embedding,
+        "query_content": content,
+    }
+
+    run_db_query(cypher_query, parameters)
 
     return concept
 
