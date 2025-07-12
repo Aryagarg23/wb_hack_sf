@@ -2,11 +2,13 @@ from backend.src.db_controller import run_db_query
 from backend.src.db_schema import Concept, Query, Link
 from sentence_transformers import SentenceTransformer
 from backend.tools.concept_categorizer import get_concept
+from typing import List
 
-# Config for database stuff
-model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
-
+################################################
+# SINGULAR TRANSACTIONS TO MAIN GRAPH
+################################################
 def find_similar_concepts(query: Query, top_k=5):
+    model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
     content = query.getContent()
     embedding = model.encode(content).tolist()
 
@@ -32,6 +34,7 @@ def find_similar_concepts(query: Query, top_k=5):
     return result
 
 def create_concept(query: Query):
+    model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
     content = query.getContent()
     concept = get_concept(content)
     intent = query.intent # Assuming the roberta handles this
@@ -50,7 +53,7 @@ def create_concept(query: Query):
     """
 
     parameters = {
-        "concept_name": concept.getName(),
+        "concept_name": concept.name,
         "intent": concept.intent,
         "embedding": concept.embedding,
         "query_content": content,
@@ -60,6 +63,39 @@ def create_concept(query: Query):
 
     return concept
 
+def connect_concept_to_query(query: Query, concept: Concept):
+    cypher_query = """
+    MERGE (c:Concept {name: $concept_name})
+    MERGE (q:Query {content: $query_content})
+    MERGE (c)-[:SEARCHED_BY]->(q)
+    """
+
+    parameters = {
+        "concept_name": concept.name,
+        "query_content": query.content
+    }
+
+    run_db_query(cypher_query, parameters)
+
+def connect_links_to_query(query: Query, links_visited: List[Link]):
+    cypher_query = """
+    MERGE (q: Query {content: $query_content})
+    MERGE (l: Link {address: $link_address})
+    MERGE (q)-[:CLICKED]-(l)
+    """
+
+    parameters = {
+        "query_content": query.content,
+        "link_address": ""
+    }
+
+    for link in links_visited:
+        parameters["link_address"] = link.address
+
+        # print(parameters)
+        run_db_query(cypher_query, parameters)
+
 # if __name__ == "__main__":
-#     a = Query('How to make sourdough', intent='Transactional')
-#     print(find_similar_concepts(a))
+#     a = Query('How to make sourdough', intent='Informational')
+#     links = [Link('https://google.com'), Link('https://www.aryagarg23.com')]
+#     print(connect_links_to_query(a, links))
