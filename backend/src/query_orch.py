@@ -1,10 +1,12 @@
-from db_controller import run_db_query
-from db_schema import Concept, Query, Link
+from backend.src.db_controller import run_db_query
+from backend.src.db_schema import Concept, Query, Link
 from sentence_transformers import SentenceTransformer
+from backend.tools.concept_categorizer import get_concept
 
-model = SentenceTransformer('all-MiniLM-L6-v2')  # or another model
+# Config for database stuff
 
 def find_similar_concepts(query: Query, top_k=5):
+    model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
     content = query.getContent()
     embedding = model.encode(content).tolist()
 
@@ -22,14 +24,19 @@ def find_similar_concepts(query: Query, top_k=5):
                 END AS similarity
             RETURN c.name AS name, c.intent AS intent, similarity
             ORDER BY similarity DESC
-            LIMIT 10
+            LIMIT $top_k
             """
     vars = {"embedding": embedding, "top_k": top_k}
     result = run_db_query(db_query, vars)
 
     return result
 
+def create_concept(query: Query):
+    content = query.getContent()
+    concept = get_concept(content)
+
+    return concept
 
 # if __name__ == "__main__":
-#     a = Query(content="Ai Generated Content", intent="Transactional")
+#     a = Query('How to make sourdough', intent='Transactional')
 #     print(find_similar_concepts(a))
