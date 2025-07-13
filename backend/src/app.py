@@ -20,7 +20,7 @@ def search():
 
     intent = result.get('most_significant').get('intent')
     query.intent = intent
-    answer = jsonify(query)
+    answer = jsonify({'data': query.getContent(), 'intent': intent})
 
     if intent == 'News':
         answer = consolidate(query.getContent(), news_run)
