@@ -4,7 +4,9 @@
   "description": "An Electron-based browser application",
   "main": "src/main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "fake-backend": "cd fake_backend && npm start",
+    "dev": "concurrently \"npm run fake-backend\" \"npm start\""
   },
   "build": {
     "appId": "com.gyrus.browser",

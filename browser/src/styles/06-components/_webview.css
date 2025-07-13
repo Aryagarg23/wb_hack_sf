@@ -17,6 +17,17 @@
   pointer-events: auto;
 }
 
+/* When webview is active, ensure the webview element fills completely */
+.content-area.has-active-webview #webview-container .browser-webview {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
 .browser-webview:hover {
   /* Remove hover effect since webview fills the entire area */
 }
@@ -25,7 +36,7 @@
 .webview-container {
   width: 100%;
   height: 100%;
-  position: relative; /* Use relative so it doesn't cover the content area */
+  position: absolute; /* Position absolutely to fill the content area */
   top: 0;
   left: 0;
   right: 0;
@@ -35,6 +46,27 @@
   background-color: var(--color-base);
   border-radius: 0; /* Remove border radius to fill completely */
   overflow: hidden;
+  z-index: 1;
+  min-height: 100%; /* Ensure minimum height */
+}
+
+/* When webview is active, completely override positioning */
+.content-area.has-active-webview #webview-container .webview-container {
+  position: fixed !important;
+  top: 48px !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 48px) !important;
+  z-index: 999 !important;
+  background-color: red !important; /* Debug: temporary red background to see boundaries */
+}
+
+/* Adjust for sidebar when visible */
+.sidebar.is-visible ~ .content-area.has-active-webview #webview-container .webview-container {
+  left: 200px !important;
+  width: calc(100vw - 200px) !important;
 }
 
 /* Loading indicator */

@@ -1,1 +1,7 @@
 ./.venv
+/venv
+/browser/node_modules
+/browser/fake_backend/node_modules
+/browser/fake_backend/dist
+/browser/fake_backend/build
+/browser/fake_backend/dist

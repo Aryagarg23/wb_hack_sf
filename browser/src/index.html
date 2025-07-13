@@ -23,6 +23,7 @@
     <link rel="stylesheet" href="styles/06-components/_menu-button.css" />
     <link rel="stylesheet" href="styles/06-components/_nav-controls.css" />
     <link rel="stylesheet" href="styles/06-components/_sidebar.css" />
+    <link rel="stylesheet" href="styles/06-components/_right-sidebar.css" />
     <link rel="stylesheet" href="styles/06-components/_buffer-button.css" />
     <link rel="stylesheet" href="styles/06-components/_network-button.css" />
     <link rel="stylesheet" href="styles/06-components/_network-modal.css" />
@@ -65,7 +66,7 @@
 
     <!-- Main container for sidebar and content -->
     <div class="main-container">
-      <!-- Sidebar component -->
+      <!-- Left sidebar component (Task/Query) -->
       <div id="sidebar-container"></div>
 
       <!-- Main content area -->
@@ -73,6 +74,7 @@
         <!-- Hover detection zones -->
         <div class="hover-detection-zone hover-detection-zone--top"></div>
         <div class="hover-detection-zone hover-detection-zone--left"></div>
+        <div class="hover-detection-zone hover-detection-zone--right"></div>
         
         <!-- Test button for tab creation -->
     
@@ -80,8 +82,11 @@
         <div id="query-input-container"> </div>
 
         <!-- Webview component -->
-        <!-- <div id="webview-container"></div> -->
+        <div id="webview-container"></div>
       </main>
+
+      <!-- Right sidebar component (Browser Tabs) -->
+      <div id="right-sidebar-container"></div>
     </div>
 
     <!-- Network Modal -->

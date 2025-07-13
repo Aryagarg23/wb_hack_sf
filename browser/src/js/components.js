@@ -88,6 +88,7 @@ class ComponentManager {
       'query-input',
       'webview',
       'sidebar',
+      'right-sidebar',
       'buffer-button', // Add the new buffer button component
       'network-button', // Add the new network button component
       'network-modal' // Add the new network modal component
@@ -99,6 +100,7 @@ class ComponentManager {
 
     // Insert components into their containers
     this.insertComponent('sidebar-container', 'sidebar');
+    this.insertComponent('right-sidebar-container', 'right-sidebar');
     this.insertComponent('nav-controls-container', 'navigation-controls');
     this.insertComponent('url-bar-container', 'url-bar');
     this.insertComponent('menu-button-container', 'menu-button');

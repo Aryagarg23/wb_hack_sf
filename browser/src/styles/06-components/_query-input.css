@@ -19,117 +19,282 @@
   
   /* Smooth Growth Animation & Transitions */
   transition: 
-    box-shadow var(--transition-duration-normal) ease;
-}
-
-.query-input__text-area {
-  /* Reset and Font */
-  background: none;
-  border: none;
-  outline: none;
-  color: var(--color-text-primary);
-  font-family: var(--font-family-primary);
-  font-weight: var(--font-weight-bold);
+    box-shadow var(--transition-duration-normal) var(--transition-easing-smooth),
+    transform var(--transition-duration-normal) var(--transition-easing-smooth),
+    width var(--transition-duration-normal) var(--transition-easing-smooth),
+    height var(--transition-duration-normal) var(--transition-easing-smooth),
+    border-radius var(--transition-duration-normal) var(--transition-easing-smooth);
   
-  /* Sizing */
-  flex-grow: 1;
-  min-height: 25px; /* Base height */
-  
-  /* Behavior */
-  cursor: text;
-  word-wrap: break-word; /* Ensure long words wrap */
-  text-align: left; /* Better for multi-line text */
-  transition: height var(--transition-duration-normal) ease; /* Smoothly animate height changes */
-  overflow: hidden; /* Hide the scrollbar */
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: box-shadow, transform, width, height, border-radius;
 }
 
-/* Placeholder simulation */
-.query-input__text-area[data-placeholder]:empty:before {
-  content: attr(data-placeholder);
-  color: var(--color-text-secondary);
-  pointer-events: none;
-}
-
-.query-input-container.is-editor-mode {
-  border-radius: 20px; /* More rectangular */
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  max-width: 800px;
-  z-index: 2001; /* Ensure it's above the focus overlay */
-}
-
-.query-input-container.is-editor-mode .query-input__text-area {
-  width: 100%;
-  min-height: 250px; /* Taller editor */
-  margin-bottom: 10px; /* Space between text and buttons */
-  background: transparent; /* Make the editor itself invisible */
-  padding: 10px; /* Add padding inside the editor */
-  box-sizing: border-box; /* Ensure padding is included in height */
-}
-
-.query-input-container.is-editor-mode .query-input__controls {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  width: 100%;
-  gap: 10px;
-}
-
-.query-input-container.is-editor-mode .query-input__send-button {
-  display: block; /* Show the send button */
-}
-
-.query-input-container.is-active {
-  box-shadow: var(--shadow-neumorphic-inset);
-}
-
-.query-input__attach-button {
-  /* Reset and Sizing */
-  background: transparent;
-  border: none;
-  width: 24px;
-  height: 24px;
+/* Collapsed state - small sphere in corner */
+.query-input-container.is-collapsed {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 60px;
+  height: 60px;
+  min-width: 60px;
+  max-width: 60px;
+  border-radius: 50%;
   padding: 0;
+  z-index: 2000;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: var(--color-accent);
+  box-shadow: var(--shadow-neumorphic);
   
-  /* Style */
+  /* Smooth collapse transitions */
+  transition: 
+    transform var(--transition-duration-normal) var(--transition-easing-bounce),
+    box-shadow var(--transition-duration-normal) var(--transition-easing-smooth),
+    width var(--transition-duration-normal) var(--transition-easing-smooth),
+    height var(--transition-duration-normal) var(--transition-easing-smooth),
+    border-radius var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform, box-shadow, width, height, border-radius;
+}
+
+.query-input-container.is-collapsed:hover {
+  transform: scale(1.1) translateZ(0);
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+.query-input-container.is-collapsed:active {
+  transform: scale(0.95) translateZ(0);
+  transition-duration: 0.1s; /* Faster response on active */
+}
+
+.query-input-container.is-collapsed .query-input__text-area {
+  display: none;
+}
+
+.query-input-container.is-collapsed .query-input__controls {
+  display: none;
+}
+
+.query-input-container.is-collapsed::before {
+  content: "🔍";
+  font-size: 24px;
+  color: var(--color-text-primary);
+  
+  /* Smooth icon transitions */
+  transition: 
+    transform var(--transition-duration-fast) var(--transition-easing-bounce);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.query-input-container.is-collapsed:hover::before {
+  transform: scale(1.1) translateZ(0);
+}
+
+/* Editor mode - expanded rectangle */
+.query-input-container.is-editor-mode {
+  border-radius: 12px;
+  min-width: 400px;
+  max-width: 800px;
+  padding: var(--space-5) var(--space-6);
+  z-index: 2001;
+  
+  /* Smooth editor mode transitions */
+  transition: 
+    border-radius var(--transition-duration-normal) var(--transition-easing-smooth),
+    min-width var(--transition-duration-normal) var(--transition-easing-smooth),
+    max-width var(--transition-duration-normal) var(--transition-easing-smooth),
+    padding var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: border-radius, min-width, max-width, padding;
+}
+
+.query-input-container.is-editor-mode {
+  min-height: 200px;
+  height: 240px;
+  align-items: flex-start;
+  border-radius: 12px !important;
+  transition: 
+    min-width var(--transition-duration-normal) var(--transition-easing-smooth),
+    max-width var(--transition-duration-normal) var(--transition-easing-smooth),
+    padding var(--transition-duration-normal) var(--transition-easing-smooth),
+    min-height var(--transition-duration-normal) var(--transition-easing-smooth),
+    height var(--transition-duration-normal) var(--transition-easing-smooth);
+}
+
+.query-input-container.is-editor-mode .query-input__text-area {
+  min-height: 160px;
+  height: 100%;
+  font-size: 1.2rem;
+  line-height: 1.6;
+  padding: 20px;
+}
+
+/* Hide send button and search icon in focus mode */
+.query-input-container.is-editor-mode .query-input__send-button,
+.query-input-container.is-editor-mode::before,
+.query-input-container.is-editor-mode .query-input__controls {
+  display: none !important;
+}
+
+/* Active state for visual feedback */
+.query-input-container.is-active {
+  box-shadow: var(--shadow-neumorphic-inset);
+  transform: scale(1.02) translateZ(0);
+  
+  /* Smooth active state transitions */
+  transition: 
+    box-shadow var(--transition-duration-fast) var(--transition-easing-smooth),
+    transform var(--transition-duration-fast) var(--transition-easing-bounce);
+  
+  /* Hardware acceleration */
+  will-change: box-shadow, transform;
+}
+
+/* Text area */
+.query-input__text-area {
+  flex: 1;
+  border: none;
+  background: transparent;
+  outline: none;
+  resize: none;
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  min-height: 24px;
+  max-height: 120px;
+  
+  /* Smooth height transitions */
+  transition: height var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: height;
+}
+
+.query-input__text-area::placeholder {
   color: var(--color-text-secondary);
+  opacity: 0.7;
+  
+  /* Smooth placeholder transitions */
+  transition: 
+    opacity var(--transition-duration-fast) var(--transition-easing);
+  
+  will-change: opacity;
+}
+
+.query-input__text-area:focus::placeholder {
+  opacity: 0.4;
+}
+
+/* Controls */
+.query-input__controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  opacity: 1;
+  
+  /* Smooth controls transitions */
+  transition: 
+    opacity var(--transition-duration-normal) var(--transition-easing-smooth),
+    transform var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: opacity, transform;
+}
+
+.query-input-container.is-editor-mode .query-input__controls {
+  opacity: 1;
+  transform: scale(1) translateZ(0);
+}
+
+.query-input-container:not(.is-editor-mode) .query-input__controls {
+  opacity: 0;
+  transform: scale(0.8) translateZ(0);
+  pointer-events: none;
+}
+
+/* Send button */
+.query-input__send-button {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
   border-radius: 50%;
   cursor: pointer;
-  transition: all var(--transition-duration-fast) ease-in-out;
-}
-
-.query-input__attach-button:hover {
-  color: var(--color-accent);
-  background-color: rgba(0,0,0,0.05);
-}
-
-.query-input__attach-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.query-input__send-button {
-  display: none; /* Hidden by default */
-  /* Neumorphic Button Style */
-  background-color: var(--color-base);
   color: var(--color-text-secondary);
-  border: none;
-  border-radius: 10px;
-  padding: 8px 16px;
-  font-family: var(--font-family-primary);
-  font-weight: var(--font-weight-bold);
-  cursor: pointer;
-  box-shadow: var(--shadow-neumorphic);
-  transition: box-shadow var(--transition-duration-fast) ease-in-out;
+  
+  /* Smooth button transitions */
+  transition: 
+    transform var(--transition-duration-fast) var(--transition-easing-bounce),
+    background-color var(--transition-duration-fast) var(--transition-easing),
+    color var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform, background-color, color;
 }
 
 .query-input__send-button:hover {
+  background-color: rgba(142, 130, 255, 0.1);
   color: var(--color-accent);
+  transform: scale(1.1) translateZ(0);
 }
 
 .query-input__send-button:active {
-  box-shadow: var(--shadow-neumorphic-inset);
+  transform: scale(0.95) translateZ(0);
+  transition-duration: 0.1s; /* Faster response on active */
+}
+
+.query-input__send-button svg {
+  width: 16px;
+  height: 16px;
+  
+  /* Smooth icon transitions */
+  transition: 
+    transform var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.query-input__send-button:hover svg {
+  transform: translateX(1px) translateZ(0);
+}
+
+/* Character count */
+.query-input__char-count {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  min-width: 30px;
+  text-align: right;
+  
+  /* Smooth count transitions */
+  transition: 
+    color var(--transition-duration-fast) var(--transition-easing);
+  
+  will-change: color;
+}
+
+.query-input__char-count.near-limit {
+  color: #f59e0b;
+}
+
+.query-input__char-count.at-limit {
+  color: #ef4444;
 }

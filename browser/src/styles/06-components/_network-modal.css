@@ -7,7 +7,13 @@
   z-index: 1000;
   display: none;
   opacity: 0;
-  transition: opacity var(--transition-duration-fast) ease-in-out;
+  
+  /* Smooth modal transitions */
+  transition: opacity var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: opacity;
 }
 
 .network-modal.is-visible {
@@ -23,6 +29,15 @@
   height: 100%;
   background: rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(4px);
+  
+  /* Smooth overlay transitions */
+  transition: 
+    background-color var(--transition-duration-normal) var(--transition-easing-smooth),
+    backdrop-filter var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: background-color, backdrop-filter;
 }
 
 .network-modal__content {
@@ -38,14 +53,77 @@
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   overflow: hidden;
   transform: scale(0.9);
-  transition: transform var(--transition-duration-fast) ease-in-out;
+  
+  /* Smooth content transitions */
+  transition: 
+    transform var(--transition-duration-normal) var(--transition-easing-bounce),
+    box-shadow var(--transition-duration-normal) var(--transition-easing-smooth);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform, box-shadow;
 }
 
 .network-modal.is-visible .network-modal__content {
-  transform: scale(1);
+  transform: scale(1) translateZ(0);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
 }
 
+.network-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
 
+.network-modal__title {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.network-modal__close {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  
+  /* Smooth close button transitions */
+  transition: 
+    transform var(--transition-duration-fast) var(--transition-easing-bounce),
+    background-color var(--transition-duration-fast) var(--transition-easing),
+    color var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform, background-color, color;
+}
+
+.network-modal__close:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  transform: scale(1.1) translateZ(0);
+}
+
+.network-modal__close:active {
+  transform: scale(0.95) translateZ(0);
+  transition-duration: 0.1s; /* Faster response on active */
+}
+
+.network-modal__close::before {
+  content: "×";
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+}
 
 .network-modal__body {
   padding: 16px;
@@ -60,6 +138,15 @@
   background: rgba(255, 255, 255, 0.6);
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.05);
+  
+  /* Smooth info transitions */
+  transition: 
+    background-color var(--transition-duration-fast) var(--transition-easing),
+    border-color var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: background-color, border-color;
 }
 
 .network-info__item {
@@ -68,6 +155,12 @@
   align-items: center;
   padding: 12px 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+  
+  /* Smooth item transitions */
+  transition: 
+    border-color var(--transition-duration-fast) var(--transition-easing);
+  
+  will-change: border-color;
 }
 
 .network-info__item:last-child {
@@ -77,11 +170,23 @@
 .network-info__label {
   font-weight: 500;
   color: var(--color-text-secondary);
+  
+  /* Smooth label transitions */
+  transition: 
+    color var(--transition-duration-fast) var(--transition-easing);
+  
+  will-change: color;
 }
 
 .network-info__value {
   font-weight: 600;
   color: var(--color-text-primary);
+  
+  /* Smooth value transitions */
+  transition: 
+    color var(--transition-duration-fast) var(--transition-easing);
+  
+  will-change: color;
 }
 
 .network-actions {
@@ -105,23 +210,46 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--color-text-primary);
-  transition: all var(--transition-duration-fast) ease-in-out;
+  
+  /* Smooth button transitions */
+  transition: 
+    transform var(--transition-duration-fast) var(--transition-easing-bounce),
+    background-color var(--transition-duration-fast) var(--transition-easing),
+    border-color var(--transition-duration-fast) var(--transition-easing),
+    color var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform, background-color, border-color, color;
 }
 
 .network-action__button:hover {
   background: rgba(255, 255, 255, 1);
   border-color: var(--color-accent);
   color: var(--color-accent);
-  transform: translateY(-1px);
+  transform: translateY(-1px) translateZ(0);
 }
 
 .network-action__button:active {
-  transform: translateY(0);
+  transform: translateY(0) scale(0.98) translateZ(0);
+  transition-duration: 0.1s; /* Faster response on active */
 }
 
 .network-action__button svg {
   width: 16px;
   height: 16px;
+  
+  /* Smooth icon transitions */
+  transition: 
+    transform var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+.network-action__button:hover svg {
+  transform: scale(1.1) translateZ(0);
 }
 
 .network-graph {
@@ -141,6 +269,15 @@
   border-radius: 6px;
   border: 1px solid rgba(0, 0, 0, 0.08);
   overflow: hidden;
+  
+  /* Smooth container transitions */
+  transition: 
+    background-color var(--transition-duration-fast) var(--transition-easing),
+    border-color var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: background-color, border-color;
 }
 
 .network-graph__container svg {
@@ -150,7 +287,15 @@
 
 .network-graph__container .node {
   cursor: pointer;
-  transition: all var(--transition-duration-fast) ease-in-out;
+  
+  /* Smooth node transitions */
+  transition: 
+    stroke-width var(--transition-duration-fast) var(--transition-easing),
+    filter var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: stroke-width, filter;
 }
 
 .network-graph__container .node:hover {
@@ -166,7 +311,16 @@
 .network-graph__container .link {
   stroke: rgba(0, 0, 0, 0.2);
   stroke-width: 1.5px;
-  transition: all var(--transition-duration-fast) ease-in-out;
+  
+  /* Smooth link transitions */
+  transition: 
+    stroke-width var(--transition-duration-fast) var(--transition-easing),
+    stroke var(--transition-duration-fast) var(--transition-easing),
+    opacity var(--transition-duration-fast) var(--transition-easing);
+  
+  /* Hardware acceleration */
+  transform: translateZ(0);
+  will-change: stroke-width, stroke, opacity;
 }
 
 .network-graph__container .link:hover {
@@ -182,4 +336,10 @@
   pointer-events: none;
   fill: var(--color-text-primary);
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  
+  /* Smooth label transitions */
+  transition: 
+    fill var(--transition-duration-fast) var(--transition-easing);
+  
+  will-change: fill;
 } 

@@ -2,10 +2,12 @@
 class App {
   constructor() {
     console.log('App constructor called');
-    this.tabs = [];
+    this.tasks = [];
+    this.activeTaskIndex = 0;
     this.activeTabIndex = 0;
+    this.hasActiveWebview = false;
     this.initializeEventListeners();
-    // Initialize tabs after components are loaded
+    // Initialize tasks after components are loaded
     this.waitForComponents();
   }
 
@@ -22,9 +24,9 @@ class App {
       console.log(`Attempt ${attempts + 1}: Sidebar:`, !!sidebar, 'Add button:', !!addTabButton);
       
       if (sidebar && addTabButton) {
-        console.log('Components found, initializing tabs and tab management');
-        this.initializeTabs();
-        this.setupTabManagement();
+        console.log('Components found, initializing tasks and task management');
+        this.initializeTasks();
+        this.setupTaskManagement();
         return;
       }
       
@@ -33,10 +35,10 @@ class App {
     }
     
     console.error('Failed to load components after 5 seconds');
-    this.createFallbackTabButton();
+    this.createFallbackTaskButton();
   }
 
-  createFallbackTabButton() {
+  createFallbackTaskButton() {
     const sidebarContainer = document.querySelector('#sidebar-container');
     if (sidebarContainer) {
       console.log('Creating fallback sidebar structure...');
@@ -45,24 +47,24 @@ class App {
           <div class="sidebar-background"></div>
           <div class="sidebar__content">
             <div class="sidebar__header">
-              <h3 class="sidebar__title">Tabs</h3>
-              <button class="sidebar__add-tab" type="button" title="New Tab">
+              <h3 class="sidebar__title">Task / Query</h3>
+              <button class="sidebar__add-tab" type="button" title="New Task">
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                   <path d="M8 1v6H2v2h6v6h2V9h6V7H10V1H8z"/>
                 </svg>
               </button>
             </div>
             <div class="sidebar__tab-list">
-              <!-- Tabs will be dynamically added here -->
+              <!-- Tasks will be dynamically added here -->
             </div>
           </div>
         </div>
       `;
       
-      // Now try to set up tab management again
+      // Now try to set up task management again
       setTimeout(() => {
-        this.initializeTabs();
-        this.setupTabManagement();
+        this.initializeTasks();
+        this.setupTaskManagement();
       }, 100);
     }
   }
@@ -95,15 +97,18 @@ class App {
     
     // Prevent Zoom Functionality
     this.preventZoomFunctionality();
+    
+    // Collapsed Query Input Handling
+    this.setupCollapsedQueryInput();
   }
 
-  initializeTabs() {
-    // Create initial tab
-    this.createTab('about:blank', '');
+  initializeTasks() {
+    // Start with no tasks - blank slate
+    this.renderTasks();
   }
 
-  setupTabManagement() {
-    // Use event delegation to handle the add tab button
+  setupTaskManagement() {
+    // Use event delegation to handle the add task button
     document.addEventListener('click', (e) => {
       console.log('Click detected on:', e.target);
       console.log('Closest sidebar__add-tab:', e.target.closest('.sidebar__add-tab'));
@@ -111,28 +116,29 @@ class App {
       if (e.target.closest('.sidebar__add-tab')) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('Add tab button clicked via event delegation!');
+        console.log('Add task button clicked via event delegation!');
         
         // Add visual feedback
         const button = e.target.closest('.sidebar__add-tab');
         button.style.transform = 'scale(0.95)';
         setTimeout(() => {
           button.style.transform = '';
-        }, 150);
+        }, 100);
         
-        this.createTab('about:blank', 'New Tab');
+        // Open query input screen instead of creating a task directly
+        this.openQueryInput();
       }
     });
     
-    // Also add a global keyboard shortcut for new tabs
+    // Also add a global keyboard shortcut for new tasks
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault();
-        this.createTab('about:blank', 'New Tab');
+        this.openQueryInput();
       }
     });
     
-    console.log('Tab management setup complete with event delegation');
+    console.log('Task management setup complete with event delegation');
     
     // Test if we can find the button
     setTimeout(() => {
@@ -146,27 +152,97 @@ class App {
     }, 1000);
   }
 
-  createTab(url, title = 'New Tab') {
-    console.log('Creating new tab:', title);
+  openQueryInput() {
+    // Deactivate webview and expand query input
+    this.deactivateWebview();
+    
+    // Focus the query input
+    const queryInputTextArea = document.querySelector('.query-input__text-area');
+    if (queryInputTextArea) {
+      setTimeout(() => {
+        queryInputTextArea.focus();
+      }, 100);
+    }
+  }
+
+  createTask(title = 'New Task', icon = null) {
+    console.log('Creating new task:', title);
+    const task = {
+      id: Date.now() + Math.random(),
+      title: title,
+      icon: icon,
+      tabs: [],
+      createdAt: new Date()
+    };
+
+    this.tasks.push(task);
+    console.log('Total tasks now:', this.tasks.length);
+    this.renderTasks();
+    this.switchToTask(this.tasks.length - 1);
+  }
+
+  createTab(url, title = 'New Tab', snippet = '') {
+    if (this.tasks.length === 0) {
+      this.createTask('New Task');
+    }
+    
+    const activeTask = this.tasks[this.activeTaskIndex];
+    if (!activeTask) return;
+    
+    console.log('Creating new tab for task:', activeTask.title, 'Tab:', title);
     const tab = {
       id: Date.now() + Math.random(),
       url: url,
       title: title,
+      snippet: snippet,
+      favicon: this.getFaviconUrl(url),
       webview: null
     };
 
-    this.tabs.push(tab);
-    console.log('Total tabs now:', this.tabs.length);
+    activeTask.tabs.push(tab);
+    console.log('Total tabs in current task now:', activeTask.tabs.length);
+    this.renderTasks(); // Update task count display
     this.renderTabs();
-    this.switchToTab(this.tabs.length - 1);
+    this.switchToTab(activeTask.tabs.length - 1);
+  }
+
+  switchToTask(index) {
+    if (index < 0 || index >= this.tasks.length) return;
+
+    // Update active task
+    this.activeTaskIndex = index;
+    this.activeTabIndex = 0; // Reset to first tab of new task
+    
+    const activeTask = this.tasks[index];
+    console.log('Switched to task:', activeTask.title);
+
+    // Switch to first tab of the task
+    if (activeTask.tabs.length > 0) {
+      this.switchToTab(0);
+    } else {
+      // No tabs in this task, clear webview
+      const webview = document.getElementById('browser-webview');
+      if (webview) {
+        webview.src = 'about:blank';
+      }
+      
+      const urlBarInput = document.querySelector('.url-bar__input');
+      if (urlBarInput) {
+        urlBarInput.value = '';
+      }
+    }
+
+    this.renderTasks();
+    this.renderTabs();
   }
 
   switchToTab(index) {
-    if (index < 0 || index >= this.tabs.length) return;
+    const activeTask = this.tasks[this.activeTaskIndex];
+    if (!activeTask || index < 0 || index >= activeTask.tabs.length) return;
 
     // Update active tab
     this.activeTabIndex = index;
-    const activeTab = this.tabs[index];
+    const activeTab = activeTask.tabs[index];
 
     // Update webview
     const webview = document.getElementById('browser-webview');
@@ -183,54 +259,207 @@ class App {
     this.renderTabs();
   }
 
-  closeTab(index) {
-    if (this.tabs.length <= 1) return; // Keep at least one tab
+  closeTask(index) {
+    // Close all tabs in the task first
+    const taskToClose = this.tasks[index];
+    if (taskToClose) {
+      taskToClose.tabs = [];
+    }
 
-    this.tabs.splice(index, 1);
+    // Remove the task
+    this.tasks.splice(index, 1);
+
+    // If no tasks remain, go to default query page
+    if (this.tasks.length === 0) {
+      this.activeTaskIndex = 0;
+      this.activeTabIndex = 0;
+      this.deactivateWebview();
+      this.renderTasks();
+      this.renderTabs();
+      return;
+    }
+
+    // Adjust active task index
+    if (this.activeTaskIndex >= index) {
+      this.activeTaskIndex = Math.max(0, this.activeTaskIndex - 1);
+    }
+
+    // Switch to the new active task
+    this.switchToTask(this.activeTaskIndex);
+  }
+
+  closeTab(index) {
+    const activeTask = this.tasks[this.activeTaskIndex];
+    if (!activeTask || activeTask.tabs.length <= 1) return; // Keep at least one tab
+
+    activeTask.tabs.splice(index, 1);
 
     // Adjust active tab index
     if (this.activeTabIndex >= index) {
       this.activeTabIndex = Math.max(0, this.activeTabIndex - 1);
     }
 
-    // Switch to the new active tab
+    // Update task count display and switch to the new active tab
+    this.renderTasks();
     this.switchToTab(this.activeTabIndex);
   }
 
-  renderTabs() {
+  detectTaskIcon(links) {
+    // Analyze links and snippets to determine the most representative icon
+    const content = links.map(link => 
+      `${link.title} ${link.snippet || ''}`
+    ).join(' ').toLowerCase();
+    
+    // Define icon mappings based on content keywords
+    const iconMappings = [
+      { keywords: ['github', 'code', 'programming', 'developer', 'software'], icon: '💻' },
+      { keywords: ['youtube', 'video', 'tutorial', 'course'], icon: '📺' },
+      { keywords: ['twitter', 'social', 'tweet'], icon: '🐦' },
+      { keywords: ['linkedin', 'professional', 'career', 'job'], icon: '💼' },
+      { keywords: ['amazon', 'shopping', 'buy', 'product'], icon: '📦' },
+      { keywords: ['spotify', 'music', 'song', 'audio'], icon: '🎵' },
+      { keywords: ['netflix', 'movie', 'film', 'entertainment'], icon: '🎬' },
+      { keywords: ['reddit', 'discussion', 'community'], icon: '🤖' },
+      { keywords: ['stackoverflow', 'question', 'answer', 'help'], icon: '❓' },
+      { keywords: ['wikipedia', 'encyclopedia', 'knowledge'], icon: '📚' },
+      { keywords: ['arxiv', 'research', 'paper', 'academic'], icon: '📄' },
+      { keywords: ['medium', 'article', 'blog', 'writing'], icon: '📝' },
+      { keywords: ['notion', 'document', 'note'], icon: '📋' },
+      { keywords: ['figma', 'design', 'ui', 'ux'], icon: '🎨' },
+      { keywords: ['discord', 'chat', 'communication'], icon: '💬' },
+      { keywords: ['slack', 'team', 'collaboration'], icon: '💬' },
+      { keywords: ['google', 'search', 'web'], icon: '🔍' },
+      { keywords: ['bing', 'search'], icon: '🔎' }
+    ];
+    
+    // Find the best matching icon
+    for (const mapping of iconMappings) {
+      if (mapping.keywords.some(keyword => content.includes(keyword))) {
+        return mapping.icon;
+      }
+    }
+    
+    // Default icon based on content type
+    if (content.includes('research') || content.includes('study')) return '🔬';
+    if (content.includes('news') || content.includes('article')) return '📰';
+    if (content.includes('shopping') || content.includes('buy')) return '🛒';
+    if (content.includes('social') || content.includes('community')) return '👥';
+    
+    return '🌐'; // Default web icon
+  }
+
+  getFaviconUrl(url) {
+    try {
+      const urlObj = new URL(url);
+      return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  duplicateTab(tab) {
+    const activeTask = this.tasks[this.activeTaskIndex];
+    if (!activeTask) return;
+
+    const duplicatedTab = {
+      id: Date.now() + Math.random(),
+      url: tab.url,
+      title: `${tab.title} (Copy)`,
+      snippet: tab.snippet,
+      favicon: tab.favicon,
+      webview: null
+    };
+
+    activeTask.tabs.push(duplicatedTab);
+    console.log('Duplicated tab:', tab.title);
+    this.renderTabs();
+    this.switchToTab(activeTask.tabs.length - 1);
+  }
+
+  renderTasks() {
     const tabList = document.querySelector('.sidebar__tab-list');
     if (!tabList) return;
 
     tabList.innerHTML = '';
 
-    this.tabs.forEach((tab, index) => {
-      const tabElement = document.createElement('div');
-      tabElement.className = `sidebar__tab ${index === this.activeTabIndex ? 'is-active' : ''}`;
-      tabElement.innerHTML = `
+    if (this.tasks.length === 0) {
+      // Show empty state
+      const emptyElement = document.createElement('div');
+      emptyElement.className = 'sidebar__empty-state';
+      emptyElement.innerHTML = `
+        <div class="sidebar__empty-icon">📝</div>
+        <div class="sidebar__empty-text">No tasks yet</div>
+        <div class="sidebar__empty-hint">Click + to create your first task</div>
+      `;
+      tabList.appendChild(emptyElement);
+      return;
+    }
+
+    this.tasks.forEach((task, index) => {
+      const taskElement = document.createElement('div');
+      taskElement.className = `sidebar__tab ${index === this.activeTaskIndex ? 'is-active' : ''}`;
+      taskElement.innerHTML = `
         <div class="sidebar__tab-icon">
-          <svg viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 1a7 7 0 100 14A7 7 0 008 1zm0 13A6 6 0 108 2a6 6 0 000 12z"/>
-          </svg>
+          ${task.icon || '📝'}
         </div>
-        <h4 class="sidebar__tab-title">${tab.title}</h4>
-        <button class="sidebar__tab-close" type="button" title="Close Tab">
+        <h4 class="sidebar__tab-title">${task.title}</h4>
+        <span class="sidebar__tab-count">${task.tabs.length}</span>
+        <button class="sidebar__tab-close" type="button" title="Close Task">
+        </button>
+      `;
+
+      // Add click handlers
+      taskElement.addEventListener('click', (e) => {
+        if (!e.target.closest('.sidebar__tab-close')) {
+          this.switchToTask(index);
+        }
+      });
+
+      const closeButton = taskElement.querySelector('.sidebar__tab-close');
+      closeButton.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.closeTask(index);
+      });
+
+      tabList.appendChild(taskElement);
+    });
+  }
+
+  renderTabs() {
+    const rightSidebar = document.querySelector('.right-sidebar__tab-list');
+    if (!rightSidebar) return;
+
+    rightSidebar.innerHTML = '';
+
+    const activeTask = this.tasks[this.activeTaskIndex];
+    if (!activeTask) return;
+
+    activeTask.tabs.forEach((tab, index) => {
+      const tabElement = document.createElement('div');
+      tabElement.className = `right-sidebar__tab ${index === this.activeTabIndex ? 'is-active' : ''}`;
+      tabElement.innerHTML = `
+        <div class="right-sidebar__tab-icon">
+          ${tab.favicon ? `<img src="${tab.favicon}" alt="favicon" onerror="this.style.display='none'">` : '🌐'}
+        </div>
+        <h4 class="right-sidebar__tab-title">${tab.title}</h4>
+        <button class="right-sidebar__tab-close" type="button" title="Close Tab">
         </button>
       `;
 
       // Add click handlers
       tabElement.addEventListener('click', (e) => {
-        if (!e.target.closest('.sidebar__tab-close')) {
+        if (!e.target.closest('.right-sidebar__tab-close')) {
           this.switchToTab(index);
         }
       });
 
-      const closeButton = tabElement.querySelector('.sidebar__tab-close');
+      const closeButton = tabElement.querySelector('.right-sidebar__tab-close');
       closeButton.addEventListener('click', (e) => {
         e.stopPropagation();
         this.closeTab(index);
       });
 
-      tabList.appendChild(tabElement);
+      rightSidebar.appendChild(tabElement);
     });
   }
 
@@ -276,9 +505,22 @@ class App {
 
     if (!queryInput_container || !queryInput_textArea) return;
 
+    // Setup focus overlay click handler to dismiss editor mode
+    if (focusOverlay) {
+      focusOverlay.addEventListener('click', (e) => {
+        // Only dismiss if clicking on the overlay itself, not on the query input
+        if (e.target === focusOverlay) {
+          queryInput_container.classList.remove('is-editor-mode');
+          focusOverlay.classList.remove('is-active');
+          queryInput_textArea.blur();
+        }
+      });
+    }
+
 
     const switchToEditorMode = () => {
       if (!queryInput_container.classList.contains('is-editor-mode')) {
+        queryInput_container.classList.remove('is-collapsed');
         queryInput_container.classList.add('is-editor-mode');
         focusOverlay?.classList.add('is-active');
         adjustHeight(); // Re-check height after mode switch
@@ -291,14 +533,72 @@ class App {
       adjustHeight(); // Recalculate height after toggle
     };
 
-    const submitQuery = () => {
+    const submitQuery = async () => {
+      const query = queryInput_textArea.innerText.trim();
+      
+      if (!query) {
+        console.log('Empty query, not submitting');
+        return;
+      }
+      
       // Simulate click on the container
       queryInput_container.classList.add('is-active');
       setTimeout(() => {
         queryInput_container.classList.remove('is-active');
-      }, 150);
-      console.log('Query submitted:', queryInput_textArea.innerText);
-      // Here you would clear the input, etc.
+      }, 100);
+      
+      console.log('Query submitted:', query);
+      
+      try {
+        // Call the fake backend API
+        const response = await fetch('http://localhost:3001/api/query', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query: query })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Backend response:', data);
+        
+        if (data.success && data.links && data.links.length > 0) {
+          // Create a new task for this query
+          const taskTitle = query.length > 30 ? query.substring(0, 30) + '...' : query;
+          const taskIcon = this.detectTaskIcon(data.links);
+          this.createTask(taskTitle, taskIcon);
+          
+          // Create tabs for each link under the new task
+          data.links.forEach((link, index) => {
+            this.createTab(link.link, link.title, link.snippet);
+          });
+          
+          // Clear the query input
+          queryInput_textArea.innerText = '';
+          queryInput_textArea.style.height = 'auto';
+          
+          // Activate webview and collapse query input
+          this.activateWebview();
+          
+          console.log(`Created task "${taskTitle}" with ${data.links.length} tabs for query: "${query}"`);
+        } else {
+          console.error('Invalid response from backend:', data);
+        }
+        
+      } catch (error) {
+        console.error('Error calling backend API:', error);
+        // Fallback: create a single tab with a Google search
+        const fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+        this.createTab(fallbackUrl, `${query} - Search`);
+        
+        // Clear the query input
+        queryInput_textArea.innerText = '';
+        queryInput_textArea.style.height = 'auto';
+      }
     };
 
     // Smooth Growth & Mode Switching
@@ -316,6 +616,14 @@ class App {
     
     // Key-based Events
     queryInput_textArea.addEventListener('keydown', (e) => {
+      // Escape key to exit editor mode
+      if (e.key === 'Escape' && queryInput_container.classList.contains('is-editor-mode')) {
+        e.preventDefault();
+        queryInput_container.classList.remove('is-editor-mode');
+        focusOverlay?.classList.remove('is-active');
+        queryInput_textArea.blur();
+        return;
+      }
       // Toggle editor mode with Shift+Enter if below character limit
       if (e.shiftKey && e.key === 'Enter') {
         e.preventDefault();
@@ -323,29 +631,11 @@ class App {
           toggleEditorMode();
         }
         return; // Stop further execution for this key event
-
-
-
-
-
-
-
-
-
-
-
-
       }
-
-
       // Submit with Enter only in pill mode
       if (e.key === 'Enter' && !queryInput_container.classList.contains('is-editor-mode')) {
         e.preventDefault(); 
         submitQuery();
-
-
-
-
       }
     });
 
@@ -700,10 +990,11 @@ class App {
 
   setupWebview() {
     const webview = document.getElementById('browser-webview');
+    const webviewContainer = document.getElementById('webview-container');
     const urlBarInput = document.querySelector('.url-bar__input');
     const loadingIndicator = document.querySelector('.webview-loading');
 
-    if (!webview) return;
+    if (!webview || !webviewContainer) return;
 
     // Handle webview events
     webview.addEventListener('did-start-loading', () => {
@@ -815,17 +1106,21 @@ class App {
     // Simple state tracking
     let isHeaderVisible = false;
     let isSidebarVisible = false;
+    let isRightSidebarVisible = false;
     let isUrlBarFocused = false;
     let isMouseInHeader = false;
     let isMouseInSidebar = false;
+    let isMouseInRightSidebar = false;
     let hideTimer = null;
     
     // Make state accessible to menu button
     this.isHeaderVisible = () => isHeaderVisible;
     this.isSidebarVisible = () => isSidebarVisible;
+    this.isRightSidebarVisible = () => isRightSidebarVisible;
     this.setHeaderVisible = (visible) => { isHeaderVisible = visible; };
     this.setSidebarVisible = (visible) => { isSidebarVisible = visible; };
-    const HIDE_DELAY = 250; // Small delay to prevent flickering
+    this.setRightSidebarVisible = (visible) => { isRightSidebarVisible = visible; };
+    const HIDE_DELAY = 750; // Soft delay before hiding bars
     // Function to show both header and sidebar
     const showBoth = () => {
       if (!isHeaderVisible) {
@@ -841,6 +1136,28 @@ class App {
         clearTimeout(hideTimer);
         hideTimer = null;
       }
+      // Update webview position if active
+      if (this.hasActiveWebview) {
+        this.updateWebviewPosition();
+      }
+    };
+
+    // Function to show right sidebar
+    const showRightSidebar = () => {
+      const rightSidebar = document.querySelector('.right-sidebar');
+      if (!isRightSidebarVisible && rightSidebar) {
+        rightSidebar.classList.add('is-visible');
+        isRightSidebarVisible = true;
+      }
+      // Clear any existing hide timer
+      if (hideTimer) {
+        clearTimeout(hideTimer);
+        hideTimer = null;
+      }
+      // Update webview position if active
+      if (this.hasActiveWebview) {
+        this.updateWebviewPosition();
+      }
     };
 
     // Function to hide both header and sidebar
@@ -852,6 +1169,23 @@ class App {
       if (isSidebarVisible && !isMouseInSidebar && !isMouseInHeader) {
         sidebar?.classList.remove('is-visible');
         isSidebarVisible = false;
+      }
+      // Update webview position if active
+      if (this.hasActiveWebview) {
+        this.updateWebviewPosition();
+      }
+    };
+
+    // Function to hide right sidebar
+    const hideRightSidebar = () => {
+      const rightSidebar = document.querySelector('.right-sidebar');
+      if (isRightSidebarVisible && !isMouseInRightSidebar && rightSidebar) {
+        rightSidebar.classList.remove('is-visible');
+        isRightSidebarVisible = false;
+      }
+      // Update webview position if active
+      if (this.hasActiveWebview) {
+        this.updateWebviewPosition();
       }
     };
 
@@ -874,7 +1208,7 @@ class App {
     // Show header when mouse is near the top edge
     document.addEventListener('mousemove', (e) => {
       const distanceFromTop = e.clientY;
-      const shouldShowHeader = distanceFromTop <= 40;
+      const shouldShowHeader = distanceFromTop <= 5;
       
       if (shouldShowHeader && !isHeaderVisible) {
         showBoth();
@@ -912,9 +1246,15 @@ class App {
     // Sidebar visibility (linked with header)
     document.addEventListener('mousemove', (e) => {
       const distanceFromLeft = e.clientX;
+      const distanceFromRight = window.innerWidth - e.clientX;
       const distanceFromTop = e.clientY;
-      const shouldShowSidebar = distanceFromLeft <= 20;
-      const shouldShowHeader = distanceFromTop <= 40;
+      const shouldShowSidebar = distanceFromLeft <= 5;
+      
+      // Dynamic right sidebar trigger zone: 5px when closed, 200px when open
+      const rightSidebarTriggerZone = isRightSidebarVisible ? 200 : 5;
+      const shouldShowRightSidebar = distanceFromRight <= rightSidebarTriggerZone;
+      
+      const shouldShowHeader = distanceFromTop <= 5;
       const shouldKeepSidebarVisible = isSidebarVisible && distanceFromLeft <= 200; // Full sidebar width
       
       // Show both header and sidebar when near top-left corner
@@ -923,6 +1263,13 @@ class App {
       } else if (!shouldShowHeader && !shouldShowSidebar && !isMouseInHeader && !isMouseInSidebar && !isUrlBarFocused) {
         // Hide both when mouse is away from both areas
         startHideTimer();
+      }
+
+      // Show right sidebar when near right edge
+      if (shouldShowRightSidebar && !isRightSidebarVisible) {
+        showRightSidebar();
+      } else if (!shouldShowRightSidebar && isRightSidebarVisible && !isMouseInRightSidebar) {
+        hideRightSidebar();
       }
     });
 
@@ -936,6 +1283,594 @@ class App {
       isMouseInSidebar = false;
       // Sidebar will be hidden by the mousemove event if mouse is not near left edge
     });
+
+    // Keep right sidebar visible when hovering over it
+    const rightSidebar = document.querySelector('.right-sidebar');
+    rightSidebar?.addEventListener('mouseenter', () => {
+      isMouseInRightSidebar = true;
+      showRightSidebar();
+    });
+
+    rightSidebar?.addEventListener('mouseleave', () => {
+      isMouseInRightSidebar = false;
+      // Right sidebar will be hidden by the mousemove event if mouse is not near right edge
+    });
+
+    // Keyboard shortcut to close right sidebar (Escape key)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && isRightSidebarVisible) {
+        hideRightSidebar();
+      }
+    });
+
+    // Setup right sidebar URL input handling
+    this.setupRightSidebarInput();
+  }
+
+  setupRightSidebarInput() {
+    const urlInput = document.querySelector('.right-sidebar__url-input');
+    const autocomplete = document.querySelector('.right-sidebar__autocomplete');
+    if (!urlInput || !autocomplete) return;
+
+    const searchEngines = [
+      { name: 'google', description: 'Google Search', icon: '🔍' },
+      { name: 'bing', description: 'Bing Search', icon: '🔎' },
+      { name: 'youtube', description: 'YouTube Search', icon: '📺' },
+      { name: 'github', description: 'GitHub Search', icon: '🐙' },
+      { name: 'stackoverflow', description: 'Stack Overflow Search', icon: '💻' },
+      { name: 'reddit', description: 'Reddit Search', icon: '🤖' },
+      { name: 'wikipedia', description: 'Wikipedia Search', icon: '📚' },
+      { name: 'arxiv', description: 'arXiv Papers', icon: '📄' },
+      { name: 'twitter', description: 'Twitter Search', icon: '🐦' },
+      { name: 'linkedin', description: 'LinkedIn Search', icon: '💼' },
+      { name: 'amazon', description: 'Amazon Search', icon: '📦' },
+      { name: 'ebay', description: 'eBay Search', icon: '🛒' },
+      { name: 'spotify', description: 'Spotify Search', icon: '🎵' },
+      { name: 'netflix', description: 'Netflix Search', icon: '🎬' },
+      { name: 'medium', description: 'Medium Search', icon: '📝' },
+      { name: 'quora', description: 'Quora Search', icon: '❓' },
+      { name: 'discord', description: 'Discord Search', icon: '💬' },
+      { name: 'slack', description: 'Slack Search', icon: '💬' },
+      { name: 'notion', description: 'Notion Search', icon: '📋' },
+      { name: 'figma', description: 'Figma Search', icon: '🎨' }
+    ];
+
+    let selectedIndex = -1;
+    let filteredSuggestions = [];
+
+    const showAutocomplete = (query) => {
+      if (!query.startsWith('@')) {
+        autocomplete.style.display = 'none';
+        return;
+      }
+
+      const searchTerm = query.substring(1).toLowerCase();
+      const suggestions = [];
+
+      // Add command suggestions first
+      const commands = [
+        { name: 'duplicate', description: 'Duplicate a tab', icon: '📋' },
+        { name: 'close', description: 'Close current tab', icon: '❌' },
+        { name: 'closeall', description: 'Close all tabs in task', icon: '🗑️' },
+        { name: 'newtask', description: 'Create new task', icon: '➕' },
+        { name: 'closetask', description: 'Close current task', icon: '📁' }
+      ];
+
+      const matchingCommands = commands.filter(cmd => 
+        cmd.name.toLowerCase().includes(searchTerm) ||
+        cmd.description.toLowerCase().includes(searchTerm)
+      );
+
+      matchingCommands.forEach(cmd => {
+        suggestions.push({
+          type: 'command',
+          name: cmd.name,
+          description: cmd.description,
+          icon: cmd.icon
+        });
+      });
+
+      // Add search engines
+      const matchingEngines = searchEngines.filter(engine => 
+        engine.name.toLowerCase().includes(searchTerm) ||
+        engine.description.toLowerCase().includes(searchTerm)
+      );
+      
+      matchingEngines.forEach(engine => {
+        suggestions.push({
+          type: 'engine',
+          name: engine.name,
+          description: engine.description,
+          icon: engine.icon
+        });
+      });
+
+      // Add tab duplication if it starts with @duplicate
+      if (searchTerm.startsWith('duplicate')) {
+        const activeTask = this.tasks[this.activeTaskIndex];
+        if (activeTask && activeTask.tabs.length > 0) {
+          const duplicateQuery = searchTerm.substring(9).trim().toLowerCase();
+          activeTask.tabs.forEach(tab => {
+            if (tab.title.toLowerCase().includes(duplicateQuery) || 
+                tab.url.toLowerCase().includes(duplicateQuery)) {
+              suggestions.push({
+                type: 'duplicate',
+                name: tab.title,
+                description: 'Duplicate this tab',
+                icon: '📋',
+                tab: tab
+              });
+            }
+          });
+        }
+      }
+
+      if (suggestions.length === 0) {
+        autocomplete.style.display = 'none';
+        return;
+      }
+
+      filteredSuggestions = suggestions;
+      autocomplete.innerHTML = '';
+      
+            suggestions.forEach((suggestion, index) => {
+        const item = document.createElement('div');
+        item.className = 'right-sidebar__autocomplete-item';
+        
+        if (suggestion.type === 'command') {
+          item.innerHTML = `
+            <div class="right-sidebar__autocomplete-icon">${suggestion.icon}</div>
+            <div class="right-sidebar__autocomplete-content">
+              <div class="right-sidebar__autocomplete-engine">@${suggestion.name}</div>
+              <div class="right-sidebar__autocomplete-description">${suggestion.description}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', () => {
+            const currentValue = urlInput.value;
+            const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+            urlInput.value = beforeAt + `@${suggestion.name} `;
+            autocomplete.style.display = 'none';
+            urlInput.focus();
+          });
+        } else if (suggestion.type === 'engine') {
+          item.innerHTML = `
+            <div class="right-sidebar__autocomplete-icon">${suggestion.icon}</div>
+            <div class="right-sidebar__autocomplete-content">
+              <div class="right-sidebar__autocomplete-engine">@${suggestion.name}</div>
+              <div class="right-sidebar__autocomplete-description">${suggestion.description}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', () => {
+            const currentValue = urlInput.value;
+            const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+            urlInput.value = beforeAt + `@${suggestion.name} `;
+            autocomplete.style.display = 'none';
+            urlInput.focus();
+          });
+        } else if (suggestion.type === 'duplicate') {
+          item.innerHTML = `
+            <div class="right-sidebar__autocomplete-icon">${suggestion.icon}</div>
+            <div class="right-sidebar__autocomplete-content">
+              <div class="right-sidebar__autocomplete-engine">@duplicate</div>
+              <div class="right-sidebar__autocomplete-description">${suggestion.name}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', () => {
+            // Fill in the command and execute it
+            urlInput.value = `@duplicate ${suggestion.name}`;
+            this.processUrlInput(urlInput.value);
+            urlInput.value = '';
+            autocomplete.style.display = 'none';
+            urlInput.focus();
+          });
+        }
+
+        autocomplete.appendChild(item);
+      });
+
+      autocomplete.style.display = 'block';
+      selectedIndex = -1;
+    };
+
+    const hideAutocomplete = () => {
+      autocomplete.style.display = 'none';
+      selectedIndex = -1;
+    };
+
+    const selectAutocompleteItem = (direction) => {
+      if (filteredSuggestions.length === 0) return;
+
+      const items = autocomplete.querySelectorAll('.right-sidebar__autocomplete-item');
+      
+      if (selectedIndex >= 0) {
+        items[selectedIndex].classList.remove('is-selected');
+      }
+
+      if (direction === 'up') {
+        selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
+      } else {
+        selectedIndex = selectedIndex >= items.length - 1 ? 0 : selectedIndex + 1;
+      }
+
+      items[selectedIndex].classList.add('is-selected');
+      items[selectedIndex].scrollIntoView({ block: 'nearest' });
+    };
+
+    urlInput.addEventListener('input', (e) => {
+      showAutocomplete(e.target.value);
+    });
+
+    urlInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        
+        // If autocomplete is visible and an item is selected, use that
+        if (autocomplete.style.display === 'block' && selectedIndex >= 0 && filteredSuggestions.length > 0) {
+          const selectedSuggestion = filteredSuggestions[selectedIndex];
+          
+          if (selectedSuggestion.type === 'engine') {
+            // Fill in the search engine
+            const currentValue = urlInput.value;
+            const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+            urlInput.value = beforeAt + `@${selectedSuggestion.name} `;
+            autocomplete.style.display = 'none';
+            urlInput.focus();
+          } else if (selectedSuggestion.type === 'duplicate') {
+            // Fill in and execute the duplicate command
+            urlInput.value = `@duplicate ${selectedSuggestion.name}`;
+            this.processUrlInput(urlInput.value);
+            urlInput.value = '';
+            autocomplete.style.display = 'none';
+            urlInput.focus();
+          }
+        } else {
+          // Process the current input normally
+          const input = e.target.value.trim();
+          
+          if (!input) return;
+          
+          // Clear the input and hide autocomplete
+          e.target.value = '';
+          hideAutocomplete();
+          
+          // Process the input
+          this.processUrlInput(input);
+        }
+      } else if (e.key === 'Escape') {
+        hideAutocomplete();
+        e.target.blur();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectAutocompleteItem('down');
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectAutocompleteItem('up');
+      } else if (e.key === 'Tab') {
+        e.preventDefault();
+        handleTabCompletion();
+      }
+    });
+
+    const handleTabCompletion = () => {
+      const currentValue = urlInput.value;
+      
+      if (!currentValue.startsWith('@')) {
+        return;
+      }
+
+      const searchTerm = currentValue.substring(1).toLowerCase();
+      
+      // Find matching search engines
+      const matchingEngines = searchEngines.filter(engine => 
+        engine.name.toLowerCase().startsWith(searchTerm)
+      );
+
+      // Find matching duplicate commands
+      let matchingDuplicates = [];
+      if (searchTerm.startsWith('duplicate')) {
+        const activeTask = this.tasks[this.activeTaskIndex];
+        if (activeTask && activeTask.tabs.length > 0) {
+          const duplicateQuery = searchTerm.substring(9).trim().toLowerCase();
+          activeTask.tabs.forEach(tab => {
+            if (tab.title.toLowerCase().startsWith(duplicateQuery) || 
+                tab.url.toLowerCase().includes(duplicateQuery)) {
+              matchingDuplicates.push({
+                type: 'duplicate',
+                name: tab.title,
+                tab: tab
+              });
+            }
+          });
+        }
+      }
+
+      // If there's exactly one match, complete it
+      if (matchingEngines.length === 1) {
+        const engine = matchingEngines[0];
+        const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+        urlInput.value = beforeAt + `@${engine.name} `;
+        return;
+      }
+
+      if (matchingDuplicates.length === 1) {
+        const duplicate = matchingDuplicates[0];
+        const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+        urlInput.value = beforeAt + `@duplicate ${duplicate.name}`;
+        // Execute the duplicate command immediately
+        this.processUrlInput(urlInput.value);
+        urlInput.value = '';
+        return;
+      }
+
+      // If multiple matches, show autocomplete
+      if (matchingEngines.length > 1 || matchingDuplicates.length > 1) {
+        showAutocomplete(currentValue);
+      }
+    };
+
+    // Hide autocomplete when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.right-sidebar__new-tab-input')) {
+        hideAutocomplete();
+      }
+    });
+
+    // Hide autocomplete when input loses focus
+    urlInput.addEventListener('blur', () => {
+      setTimeout(() => {
+        hideAutocomplete();
+      }, 150);
+    });
+  }
+
+  processUrlInput(input) {
+    // Check if input contains delimiters for multiple tabs
+    const delimiters = ['|', ';', ','];
+    let hasDelimiter = false;
+    let delimiter = null;
+    
+    for (const delim of delimiters) {
+      if (input.includes(delim)) {
+        hasDelimiter = true;
+        delimiter = delim;
+        break;
+      }
+    }
+    
+    if (hasDelimiter) {
+      // Split by delimiter and process each part
+      const parts = input.split(delimiter).map(part => part.trim()).filter(part => part.length > 0);
+      parts.forEach(part => {
+        this.processUrlInput(part);
+      });
+      return;
+    }
+
+    // Check if it's a command
+    const commandMatch = input.match(/^@(\w+)(?:\s+(.+))?$/);
+    if (commandMatch) {
+      const command = commandMatch[1].toLowerCase();
+      const argument = commandMatch[2] || '';
+
+      switch (command) {
+        case 'duplicate':
+          if (argument) {
+            const activeTask = this.tasks[this.activeTaskIndex];
+            if (activeTask) {
+              const matchingTab = activeTask.tabs.find(tab => 
+                tab.title.toLowerCase().includes(argument.toLowerCase()) ||
+                tab.url.toLowerCase().includes(argument.toLowerCase())
+              );
+              if (matchingTab) {
+                this.duplicateTab(matchingTab);
+                return;
+              }
+            }
+            console.error('No matching tab found for duplication:', argument);
+            return;
+          }
+          break;
+
+        case 'close':
+          if (this.tasks[this.activeTaskIndex] && this.tasks[this.activeTaskIndex].tabs.length > 1) {
+            this.closeTab(this.activeTabIndex);
+            return;
+          }
+          break;
+
+        case 'closeall':
+          const activeTask = this.tasks[this.activeTaskIndex];
+          if (activeTask) {
+            activeTask.tabs = [];
+            this.activeTabIndex = 0;
+            this.renderTabs();
+            return;
+          }
+          break;
+
+        case 'newtask':
+          this.createTask('New Task');
+          return;
+
+        case 'closetask':
+          if (this.tasks.length > 0) {
+            this.closeTask(this.activeTaskIndex);
+          }
+          return;
+      }
+    }
+
+    // Check if it's a search engine command (@engine or @engine query)
+    const searchMatch = input.match(/^@(\w+)(?:\s+(.+))?$/);
+    if (searchMatch) {
+      const engine = searchMatch[1].toLowerCase();
+      const query = searchMatch[2] || '';
+      
+      let searchUrl = '';
+      let tabTitle = '';
+      
+      if (query) {
+        // Has query - do search
+        switch (engine) {
+          case 'google':
+            searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+            break;
+          case 'bing':
+            searchUrl = `https://www.bing.com/search?q=${encodeURIComponent(query)}`;
+            break;
+
+          case 'youtube':
+            searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`;
+            break;
+          case 'github':
+            searchUrl = `https://github.com/search?q=${encodeURIComponent(query)}`;
+            break;
+          case 'stackoverflow':
+            searchUrl = `https://stackoverflow.com/search?q=${encodeURIComponent(query)}`;
+            break;
+          case 'reddit':
+            searchUrl = `https://www.reddit.com/search/?q=${encodeURIComponent(query)}`;
+            break;
+          case 'wikipedia':
+            searchUrl = `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(query)}`;
+            break;
+                  case 'arxiv':
+          searchUrl = `https://arxiv.org/search/?query=${encodeURIComponent(query)}&searchtype=all&source=header`;
+          break;
+        case 'twitter':
+          searchUrl = `https://twitter.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'linkedin':
+          searchUrl = `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(query)}`;
+          break;
+        case 'amazon':
+          searchUrl = `https://www.amazon.com/s?k=${encodeURIComponent(query)}`;
+          break;
+        case 'ebay':
+          searchUrl = `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(query)}`;
+          break;
+        case 'spotify':
+          searchUrl = `https://open.spotify.com/search/${encodeURIComponent(query)}`;
+          break;
+        case 'netflix':
+          searchUrl = `https://www.netflix.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'medium':
+          searchUrl = `https://medium.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'quora':
+          searchUrl = `https://www.quora.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'discord':
+          searchUrl = `https://discord.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'slack':
+          searchUrl = `https://slack.com/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'notion':
+          searchUrl = `https://www.notion.so/search?q=${encodeURIComponent(query)}`;
+          break;
+        case 'figma':
+          searchUrl = `https://www.figma.com/search?model_type=files&q=${encodeURIComponent(query)}`;
+          break;
+        default:
+          // Default to Google for unknown engines
+          searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+      }
+      tabTitle = `${engine} search: ${query}`;
+    } else {
+      // No query - open homepage
+      switch (engine) {
+        case 'google':
+          searchUrl = `https://www.google.com`;
+          break;
+        case 'bing':
+          searchUrl = `https://www.bing.com`;
+          break;
+
+        case 'youtube':
+          searchUrl = `https://www.youtube.com`;
+          break;
+        case 'github':
+          searchUrl = `https://github.com`;
+          break;
+        case 'stackoverflow':
+          searchUrl = `https://stackoverflow.com`;
+          break;
+        case 'reddit':
+          searchUrl = `https://www.reddit.com`;
+          break;
+        case 'wikipedia':
+          searchUrl = `https://en.wikipedia.org`;
+          break;
+        case 'arxiv':
+          searchUrl = `https://arxiv.org`;
+          break;
+        case 'twitter':
+          searchUrl = `https://twitter.com`;
+          break;
+        case 'linkedin':
+          searchUrl = `https://www.linkedin.com`;
+          break;
+        case 'amazon':
+          searchUrl = `https://www.amazon.com`;
+          break;
+        case 'ebay':
+          searchUrl = `https://www.ebay.com`;
+          break;
+        case 'spotify':
+          searchUrl = `https://open.spotify.com`;
+          break;
+        case 'netflix':
+          searchUrl = `https://www.netflix.com`;
+          break;
+        case 'medium':
+          searchUrl = `https://medium.com`;
+          break;
+        case 'quora':
+          searchUrl = `https://www.quora.com`;
+          break;
+        case 'discord':
+          searchUrl = `https://discord.com`;
+          break;
+        case 'slack':
+          searchUrl = `https://slack.com`;
+          break;
+        case 'notion':
+          searchUrl = `https://www.notion.so`;
+          break;
+        case 'figma':
+          searchUrl = `https://www.figma.com`;
+          break;
+        default:
+          // Default to Google for unknown engines
+          searchUrl = `https://www.google.com`;
+      }
+      tabTitle = `${engine} homepage`;
+    }
+      
+      this.createTab(searchUrl, tabTitle, '');
+      return;
+    }
+    
+    // Check if it's a URL
+    let url = input;
+    if (!input.startsWith('http://') && !input.startsWith('https://')) {
+      // Assume it's a domain and add https://
+      url = `https://${input}`;
+    }
+    
+    // Validate URL
+    try {
+      new URL(url);
+      this.createTab(url, input);
+    } catch (e) {
+      console.error('Invalid URL:', input);
+      // Could show an error message here
+    }
   }
 
   preventZoomFunctionality() {
@@ -982,6 +1917,157 @@ class App {
       }
       lastTouchEnd = now;
     }, false);
+  }
+
+  activateWebview() {
+    this.hasActiveWebview = true;
+    const contentArea = document.querySelector('.content-area');
+    const queryInputContainer = document.querySelector('.query-input-container');
+    const webviewContainer = document.getElementById('webview-container');
+    const webviewComponent = webviewContainer?.querySelector('.webview-container');
+    const focusOverlay = document.querySelector('.focus-overlay');
+    
+    if (contentArea) {
+      contentArea.classList.add('has-active-webview');
+    }
+    
+    if (queryInputContainer) {
+      queryInputContainer.classList.add('is-collapsed');
+      queryInputContainer.classList.remove('is-editor-mode'); // Clear editor mode
+    }
+    
+    // Clear focus overlay when webview is activated
+    if (focusOverlay) {
+      focusOverlay.classList.remove('is-active');
+    }
+    
+    if (webviewContainer) {
+      webviewContainer.style.display = 'block';
+    }
+    
+    // Set initial webview positioning
+    this.updateWebviewPosition();
+    
+    console.log('Webview activated, query input collapsed');
+  }
+
+  updateWebviewPosition() {
+    const webviewComponent = document.querySelector('#webview-container .webview-container');
+    const header = document.querySelector('.app-header');
+    const sidebar = document.querySelector('.sidebar');
+    const rightSidebar = document.querySelector('.right-sidebar');
+    
+    if (!webviewComponent) return;
+    
+    // Check if header and sidebars are visible
+    const isHeaderVisible = header?.classList.contains('is-visible');
+    const isSidebarVisible = sidebar?.classList.contains('is-visible');
+    const isRightSidebarVisible = rightSidebar?.classList.contains('is-visible');
+    
+    // Calculate position and size
+    const top = isHeaderVisible ? '48px' : '0px';
+    const left = isSidebarVisible ? '200px' : '0px';
+    const right = isRightSidebarVisible ? '200px' : '0px';
+    const width = isSidebarVisible || isRightSidebarVisible ? 
+      `calc(100vw - ${isSidebarVisible ? '200px' : '0px'} - ${isRightSidebarVisible ? '200px' : '0px'})` : 
+      '100vw';
+    const height = isHeaderVisible ? 'calc(100vh - 48px)' : '100vh';
+    
+    // Apply styles
+    webviewComponent.style.position = 'fixed';
+    webviewComponent.style.top = top;
+    webviewComponent.style.left = left;
+    webviewComponent.style.right = right;
+    webviewComponent.style.bottom = '0';
+    webviewComponent.style.width = width;
+    webviewComponent.style.height = height;
+    webviewComponent.style.zIndex = '1'; // Lower z-index so hover zones can detect mouse
+    
+    // Also set styles on the webview element itself
+    const webviewElement = webviewComponent.querySelector('.browser-webview');
+    if (webviewElement) {
+      webviewElement.style.position = 'absolute';
+      webviewElement.style.top = '0';
+      webviewElement.style.left = '0';
+      webviewElement.style.right = '0';
+      webviewElement.style.bottom = '0';
+      webviewElement.style.width = '100%';
+      webviewElement.style.height = '100%';
+      webviewElement.style.zIndex = '1';
+    }
+  }
+
+  deactivateWebview() {
+    this.hasActiveWebview = false;
+    const contentArea = document.querySelector('.content-area');
+    const queryInputContainer = document.querySelector('.query-input-container');
+    const webviewContainer = document.getElementById('webview-container');
+    const webviewComponent = webviewContainer?.querySelector('.webview-container');
+    
+    if (contentArea) {
+      contentArea.classList.remove('has-active-webview');
+    }
+    
+    if (queryInputContainer) {
+      queryInputContainer.classList.remove('is-collapsed');
+    }
+    
+    if (webviewContainer) {
+      webviewContainer.style.display = 'none';
+    }
+    
+    // Reset the webview component styles
+    if (webviewComponent) {
+      webviewComponent.style.position = '';
+      webviewComponent.style.top = '';
+      webviewComponent.style.left = '';
+      webviewComponent.style.right = '';
+      webviewComponent.style.bottom = '';
+      webviewComponent.style.width = '';
+      webviewComponent.style.height = '';
+      webviewComponent.style.zIndex = '';
+      webviewComponent.style.backgroundColor = '';
+    }
+    
+    // Reset the webview element styles
+    const webviewElement = webviewComponent?.querySelector('.browser-webview');
+    if (webviewElement) {
+      webviewElement.style.position = '';
+      webviewElement.style.top = '';
+      webviewElement.style.left = '';
+      webviewElement.style.right = '';
+      webviewElement.style.bottom = '';
+      webviewElement.style.width = '';
+      webviewElement.style.height = '';
+      webviewElement.style.zIndex = '';
+    }
+    
+    console.log('Webview deactivated, query input expanded');
+  }
+
+  setupCollapsedQueryInput() {
+    const queryInputContainer = document.querySelector('.query-input-container');
+    
+    if (queryInputContainer) {
+      // Handle click on collapsed query input to expand it
+      queryInputContainer.addEventListener('click', (e) => {
+        if (queryInputContainer.classList.contains('is-collapsed')) {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Deactivate webview and expand query input
+          this.deactivateWebview();
+          
+          // Focus the text area
+          const textArea = queryInputContainer.querySelector('.query-input__text-area');
+          if (textArea) {
+            setTimeout(() => {
+              textArea.focus();
+            }, 100);
+          }
+        }
+      });
+    }
   }
 }
 
