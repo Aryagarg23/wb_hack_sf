@@ -2,6 +2,18 @@
 /*                       06-components/_right-sidebar.css                     */
 /* -------------------------------------------------------------------------- */
 
+.right-sidebar,
+.right-sidebar * {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.right-sidebar::-webkit-scrollbar,
+.right-sidebar *::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  background: transparent !important;
+}
+
 .right-sidebar {
   position: relative; /* Change from fixed to relative for normal document flow */
   right: 0;
@@ -132,29 +144,25 @@
 
 .right-sidebar__url-input {
   width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--color-light-shadow);
+  font-size: 0.92rem;
+  background-color: #181828;
+  color: #fff;
+  border: 1.5px solid var(--color-accent);
   border-radius: 8px;
-  background-color: rgba(255, 255, 255, 0.5);
-  font-size: var(--font-size-base);
-  color: var(--color-text-primary);
-  outline: none;
-  
-  /* Smooth input transitions */
-  transition: 
-    border-color var(--transition-duration-fast) var(--transition-easing),
-    background-color var(--transition-duration-fast) var(--transition-easing),
-    box-shadow var(--transition-duration-fast) var(--transition-easing);
-  
-  /* Hardware acceleration */
-  transform: translateZ(0);
-  will-change: border-color, background-color, box-shadow;
+  padding: 10px 14px;
+  box-shadow: 0 2px 8px rgba(142,130,255,0.08);
 }
 
 .right-sidebar__url-input:focus {
+  background-color: #23234a;
+  color: var(--color-accent);
   border-color: var(--color-accent);
-  background-color: rgba(255, 255, 255, 0.8);
-  box-shadow: 0 0 0 3px rgba(142, 130, 255, 0.1);
+  box-shadow: 0 0 0 3px rgba(187,134,252,0.12);
+}
+
+.right-sidebar__url-input::placeholder {
+  color: #bdbdf7;
+  opacity: 0.7;
 }
 
 .right-sidebar__url-input:hover {
@@ -274,35 +282,37 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 16px 20px;
   border-radius: 8px;
   cursor: pointer;
-  background: transparent;
+  background: rgba(40, 40, 48, 0.98);
   border: none;
   text-align: left;
-  color: var(--color-text-secondary);
-  
-  /* Smooth tab transitions */
+  color: var(--color-text-primary);
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.10);
   transition: 
-    background-color var(--transition-duration-fast) var(--transition-easing),
-    transform var(--transition-duration-fast) var(--transition-easing-bounce),
-    box-shadow var(--transition-duration-fast) var(--transition-easing);
-  
-  /* Hardware acceleration */
+    background-color var(--transition-duration-normal) var(--transition-easing-smooth),
+    color var(--transition-duration-normal) var(--transition-easing-smooth),
+    transform var(--transition-duration-normal) var(--transition-easing-bounce),
+    box-shadow var(--transition-duration-normal) var(--transition-easing-smooth);
   transform: translateZ(0);
-  will-change: background-color, transform, box-shadow;
+  will-change: background-color, color, transform, box-shadow;
 }
 
 .right-sidebar__tab:hover {
-  background-color: rgba(142, 130, 255, 0.05);
+  background-color: #23234a;
+  color: var(--color-accent);
   transform: translateX(-4px) translateZ(0);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 12px rgba(142, 130, 255, 0.10);
 }
 
 .right-sidebar__tab.is-active {
-  background-color: rgba(142, 130, 255, 0.1);
+  background-color: #2d2d5a;
   color: var(--color-accent);
-  box-shadow: 0 2px 12px rgba(142, 130, 255, 0.15);
+  box-shadow: 0 2px 16px rgba(187, 134, 252, 0.18);
   transform: translateX(-4px) translateZ(0);
 }
 
@@ -348,17 +358,15 @@
 
 .right-sidebar__tab-title {
   flex: 1;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-medium);
+  font-size: 1rem;
+  font-weight: 600;
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  
-  /* Smooth text transitions */
-  transition: 
-    color var(--transition-duration-fast) var(--transition-easing);
-  
+  color: inherit;
+  letter-spacing: 0.01em;
+  transition: color var(--transition-duration-normal) var(--transition-easing-smooth);
   will-change: color;
 }
 

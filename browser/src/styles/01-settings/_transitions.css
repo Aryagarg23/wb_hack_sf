@@ -4,9 +4,9 @@
  
 :root {
   /* Core transition durations */
-  --transition-duration-fast: 0.15s;
-  --transition-duration-normal: 0.3s;
-  --transition-duration-slow: 0.5s;
+  --transition-duration-fast: 0.25s;
+  --transition-duration-normal: 0.5s;
+  --transition-duration-slow: 0.8s;
   
   /* Easing functions for different types of animations */
   --transition-easing: cubic-bezier(0.4, 0, 0.2, 1); /* Material Design standard */

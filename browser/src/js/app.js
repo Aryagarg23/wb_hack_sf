@@ -1982,6 +1982,7 @@ class App {
     webviewComponent.style.width = width;
     webviewComponent.style.height = height;
     webviewComponent.style.zIndex = '1'; // Lower z-index so hover zones can detect mouse
+    webviewComponent.style.transition = 'top var(--transition-duration-normal) var(--transition-easing-smooth), left var(--transition-duration-normal) var(--transition-easing-smooth), right var(--transition-duration-normal) var(--transition-easing-smooth), width var(--transition-duration-normal) var(--transition-easing-smooth), height var(--transition-duration-normal) var(--transition-easing-smooth), opacity var(--transition-duration-normal) var(--transition-easing-smooth)';
     
     // Also set styles on the webview element itself
     const webviewElement = webviewComponent.querySelector('.browser-webview');
