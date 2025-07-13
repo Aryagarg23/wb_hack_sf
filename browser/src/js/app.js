@@ -6,6 +6,24 @@ class App {
     this.activeTaskIndex = 0;
     this.activeTabIndex = 0;
     this.hasActiveWebview = false;
+    
+    // Create the permanent General task for Navigational, Transactional, and Answer queries
+    this.generalTask = {
+      id: 'general-permanent',
+      title: 'General',
+      icon: '🌐',
+      tabs: [],
+      createdAt: new Date(),
+      isGeneralTask: true // Flag to identify this as the general task
+    };
+    
+    // Track if General task is active
+    this.isGeneralTaskActive = true;
+    
+    // Store current query and intent for backend API calls
+    this.currentQuery = null;
+    this.currentIntent = null;
+    
     this.initializeEventListeners();
     // Initialize tasks after components are loaded
     this.waitForComponents();
@@ -103,8 +121,10 @@ class App {
   }
 
   initializeTasks() {
-    // Start with no tasks - blank slate
+    // Start with no tasks - blank slate, but General task is always available
+    this.isGeneralTaskActive = true;
     this.renderTasks();
+    this.renderTabs();
   }
 
   setupTaskManagement() {
@@ -181,7 +201,7 @@ class App {
     this.switchToTask(this.tasks.length - 1);
   }
 
-  createTab(url, title = 'New Tab', snippet = '') {
+  async createTab(url, title = 'New Tab', snippet = '') {
     console.log('Creating new tab:', url, title, snippet);
     if (this.tasks.length === 0) {
       this.createTask('New Task');
@@ -205,12 +225,128 @@ class App {
     this.renderTasks(); // Update task count display
     this.renderTabs();
     this.switchToTab(activeTask.tabs.length - 1);
+
+    // Call the backend API to add the link (only for non-General tasks)
+    await this.addLinkToBackend(url, title, snippet);
+  }
+
+  createTabInGeneralTask(url, title = 'New Tab', snippet = '') {
+    console.log('Creating new tab in General task:', url, title, snippet);
+    
+    const tab = {
+      id: Date.now() + Math.random(),
+      url: url,
+      title: title,
+      snippet: snippet,
+      favicon: this.getFaviconUrl(url),
+      webview: null
+    };
+
+    this.generalTask.tabs.push(tab);
+    console.log('Total tabs in General task now:', this.generalTask.tabs.length);
+    this.renderTasks(); // Update task count display
+    this.renderTabs();
+    this.switchToTab(this.generalTask.tabs.length - 1);
+  }
+
+  async addLinkToBackend(url, title, snippet) {
+    // Only call the API if we have a current query (from a search) and we're not in General task
+    if (!this.currentQuery || this.isGeneralTaskActive) {
+      console.log('Skipping backend API call - no current query or in General task');
+      return;
+    }
+
+    try {
+      console.log('Adding link to backend:', { url, title, snippet, query: this.currentQuery, intent: this.currentIntent });
+      
+      const response = await fetch('http://127.0.0.1:5000/api/add-links', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          links: [url],
+          query: this.currentQuery,
+          intent: this.currentIntent
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log('Backend add-links response:', result);
+    } catch (error) {
+      console.error('Error calling add-links API:', error);
+      // Don't throw the error to avoid breaking the UI
+    }
   }
 
   switchToTask(index) {
     if (index < 0 || index >= this.tasks.length) return;
 
     // Update active task
+    this.activeTaskIndex = index;
+    this.activeTabIndex = 0; // Reset to first tab of new task
+    
+    const activeTask = this.tasks[index];
+    console.log('Switched to task:', activeTask.title);
+
+    // Switch to first tab of the task
+    if (activeTask.tabs.length > 0) {
+      this.switchToTaskTab(0);
+    } else {
+      // No tabs in this task, clear webview and set General tab as active
+      this.isGeneralTabActive = true;
+      const webview = document.getElementById('browser-webview');
+      if (webview) {
+        webview.src = this.generalTab.url;
+      }
+      
+      const urlBarInput = document.querySelector('.url-bar__input');
+      if (urlBarInput) {
+        urlBarInput.value = this.generalTab.url;
+      }
+    }
+
+    this.renderTasks();
+    this.renderTabs();
+  }
+
+  switchToGeneralTask() {
+    this.isGeneralTaskActive = true;
+    this.activeTabIndex = 0;
+    
+    // Update webview to show first tab of General task, or blank if no tabs
+    const webview = document.getElementById('browser-webview');
+    if (webview) {
+      if (this.generalTask.tabs.length > 0) {
+        webview.src = this.generalTask.tabs[0].url;
+      } else {
+        webview.src = 'about:blank';
+      }
+    }
+
+    // Update URL bar
+    const urlBarInput = document.querySelector('.url-bar__input');
+    if (urlBarInput) {
+      if (this.generalTask.tabs.length > 0) {
+        urlBarInput.value = this.generalTask.tabs[0].url;
+      } else {
+        urlBarInput.value = '';
+      }
+    }
+
+    this.renderTasks();
+    this.renderTabs();
+  }
+
+  switchToTask(index) {
+    if (index < 0 || index >= this.tasks.length) return;
+
+    // Update active task
+    this.isGeneralTaskActive = false;
     this.activeTaskIndex = index;
     this.activeTabIndex = 0; // Reset to first tab of new task
     
@@ -238,7 +374,14 @@ class App {
   }
 
   switchToTab(index) {
-    const activeTask = this.tasks[this.activeTaskIndex];
+    // Determine which task is active
+    let activeTask;
+    if (this.isGeneralTaskActive) {
+      activeTask = this.generalTask;
+    } else {
+      activeTask = this.tasks[this.activeTaskIndex];
+    }
+    
     if (!activeTask || index < 0 || index >= activeTask.tabs.length) return;
 
     // Update active tab
@@ -261,6 +404,9 @@ class App {
   }
 
   closeTask(index) {
+    // Prevent closing the General task (it's not in the tasks array anyway)
+    console.log('Closing task at index:', index);
+    
     // Close all tabs in the task first
     const taskToClose = this.tasks[index];
     if (taskToClose) {
@@ -270,13 +416,9 @@ class App {
     // Remove the task
     this.tasks.splice(index, 1);
 
-    // If no tasks remain, go to default query page
+    // If no tasks remain, switch to General task
     if (this.tasks.length === 0) {
-      this.activeTaskIndex = 0;
-      this.activeTabIndex = 0;
-      this.deactivateWebview();
-      this.renderTasks();
-      this.renderTabs();
+      this.switchToGeneralTask();
       return;
     }
 
@@ -383,22 +525,28 @@ class App {
 
     tabList.innerHTML = '';
 
-    if (this.tasks.length === 0) {
-      // Show empty state
-      const emptyElement = document.createElement('div');
-      emptyElement.className = 'sidebar__empty-state';
-      emptyElement.innerHTML = `
-        <div class="sidebar__empty-icon">📝</div>
-        <div class="sidebar__empty-text">No tasks yet</div>
-        <div class="sidebar__empty-hint">Click + to create your first task</div>
-      `;
-      tabList.appendChild(emptyElement);
-      return;
-    }
+    // Always render the General task first (permanent)
+    const generalTaskElement = document.createElement('div');
+    generalTaskElement.className = `sidebar__tab is-general-task ${this.isGeneralTaskActive ? 'is-active' : ''}`;
+    generalTaskElement.innerHTML = `
+      <div class="sidebar__tab-icon">
+        ${this.generalTask.icon}
+      </div>
+      <h4 class="sidebar__tab-title">${this.generalTask.title}</h4>
+      <span class="sidebar__tab-count">${this.generalTask.tabs.length}</span>
+    `;
 
+    // Add click handler for General task
+    generalTaskElement.addEventListener('click', () => {
+      this.switchToGeneralTask();
+    });
+
+    tabList.appendChild(generalTaskElement);
+
+    // Render regular tasks
     this.tasks.forEach((task, index) => {
       const taskElement = document.createElement('div');
-      taskElement.className = `sidebar__tab ${index === this.activeTaskIndex ? 'is-active' : ''}`;
+      taskElement.className = `sidebar__tab ${!this.isGeneralTaskActive && index === this.activeTaskIndex ? 'is-active' : ''}`;
       taskElement.innerHTML = `
         <div class="sidebar__tab-icon">
           ${task.icon || '📝'}
@@ -432,36 +580,43 @@ class App {
 
     rightSidebar.innerHTML = '';
 
-    const activeTask = this.tasks[this.activeTaskIndex];
-    if (!activeTask) return;
+    // Determine which task's tabs to show
+    let activeTask;
+    if (this.isGeneralTaskActive) {
+      activeTask = this.generalTask;
+    } else {
+      activeTask = this.tasks[this.activeTaskIndex];
+    }
 
-    activeTask.tabs.forEach((tab, index) => {
-      const tabElement = document.createElement('div');
-      tabElement.className = `right-sidebar__tab ${index === this.activeTabIndex ? 'is-active' : ''}`;
-      tabElement.innerHTML = `
-        <div class="right-sidebar__tab-icon">
-          ${tab.favicon ? `<img src="${tab.favicon}" alt="favicon" onerror="this.style.display='none'">` : '🌐'}
-        </div>
-        <h4 class="right-sidebar__tab-title">${tab.title}</h4>
-        <button class="right-sidebar__tab-close" type="button" title="Close Tab">
-        </button>
-      `;
+    if (activeTask && activeTask.tabs.length > 0) {
+      activeTask.tabs.forEach((tab, index) => {
+        const tabElement = document.createElement('div');
+        tabElement.className = `right-sidebar__tab ${index === this.activeTabIndex ? 'is-active' : ''}`;
+        tabElement.innerHTML = `
+          <div class="right-sidebar__tab-icon">
+            ${tab.favicon ? `<img src="${tab.favicon}" alt="favicon" onerror="this.style.display='none'">` : '🌐'}
+          </div>
+          <h4 class="right-sidebar__tab-title">${tab.title}</h4>
+          <button class="right-sidebar__tab-close" type="button" title="Close Tab">
+          </button>
+        `;
 
-      // Add click handlers
-      tabElement.addEventListener('click', (e) => {
-        if (!e.target.closest('.right-sidebar__tab-close')) {
-          this.switchToTab(index);
-        }
+        // Add click handlers
+        tabElement.addEventListener('click', (e) => {
+          if (!e.target.closest('.right-sidebar__tab-close')) {
+            this.switchToTab(index);
+          }
+        });
+
+        const closeButton = tabElement.querySelector('.right-sidebar__tab-close');
+        closeButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          this.closeTab(index);
+        });
+
+        rightSidebar.appendChild(tabElement);
       });
-
-      const closeButton = tabElement.querySelector('.right-sidebar__tab-close');
-      closeButton.addEventListener('click', (e) => {
-        e.stopPropagation();
-        this.closeTab(index);
-      });
-
-      rightSidebar.appendChild(tabElement);
-    });
+    }
   }
 
   setupWindowControls() {
@@ -505,6 +660,303 @@ class App {
     const characterLimit = 50;
 
     if (!queryInput_container || !queryInput_textArea) return;
+
+    // Create autocomplete container for main query input
+    const autocompleteContainer = document.createElement('div');
+    autocompleteContainer.className = 'query-input__autocomplete';
+    autocompleteContainer.style.cssText = `
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      margin-top: 4px;
+    `;
+    queryInput_container.appendChild(autocompleteContainer);
+
+    // Search engines and commands (same as right sidebar)
+    const searchEngines = [
+      { name: 'google', description: 'Google Search', icon: '🔍' },
+      { name: 'bing', description: 'Bing Search', icon: '🔎' },
+      { name: 'youtube', description: 'YouTube Search', icon: '📺' },
+      { name: 'github', description: 'GitHub Search', icon: '🐙' },
+      { name: 'stackoverflow', description: 'Stack Overflow Search', icon: '💻' },
+      { name: 'reddit', description: 'Reddit Search', icon: '🤖' },
+      { name: 'wikipedia', description: 'Wikipedia Search', icon: '📚' },
+      { name: 'arxiv', description: 'arXiv Papers', icon: '📄' },
+      { name: 'twitter', description: 'Twitter Search', icon: '🐦' },
+      { name: 'linkedin', description: 'LinkedIn Search', icon: '💼' },
+      { name: 'amazon', description: 'Amazon Search', icon: '📦' },
+      { name: 'ebay', description: 'eBay Search', icon: '🛒' },
+      { name: 'spotify', description: 'Spotify Search', icon: '🎵' },
+      { name: 'netflix', description: 'Netflix Search', icon: '🎬' },
+      { name: 'medium', description: 'Medium Search', icon: '📝' },
+      { name: 'quora', description: 'Quora Search', icon: '❓' },
+      { name: 'discord', description: 'Discord Search', icon: '💬' },
+      { name: 'slack', description: 'Slack Search', icon: '💬' },
+      { name: 'notion', description: 'Notion Search', icon: '📋' },
+      { name: 'figma', description: 'Figma Search', icon: '🎨' }
+    ];
+
+    let selectedIndex = -1;
+    let filteredSuggestions = [];
+
+    // Autocomplete functions
+    const showAutocomplete = (query) => {
+      if (!query.startsWith('@')) {
+        autocompleteContainer.style.display = 'none';
+        return;
+      }
+
+      const searchTerm = query.substring(1).toLowerCase();
+      const suggestions = [];
+
+      // Add command suggestions first
+      const commands = [
+        { name: 'duplicate', description: 'Duplicate a tab', icon: '📋' },
+        { name: 'close', description: 'Close current tab', icon: '❌' },
+        { name: 'closeall', description: 'Close all tabs in task', icon: '🗑️' },
+        { name: 'newtask', description: 'Create new task', icon: '➕' },
+        { name: 'closetask', description: 'Close current task', icon: '📁' }
+      ];
+
+      const matchingCommands = commands.filter(cmd => 
+        cmd.name.toLowerCase().includes(searchTerm) ||
+        cmd.description.toLowerCase().includes(searchTerm)
+      );
+
+      matchingCommands.forEach(cmd => {
+        suggestions.push({
+          type: 'command',
+          name: cmd.name,
+          description: cmd.description,
+          icon: cmd.icon
+        });
+      });
+
+      // Add search engines
+      const matchingEngines = searchEngines.filter(engine => 
+        engine.name.toLowerCase().includes(searchTerm) ||
+        engine.description.toLowerCase().includes(searchTerm)
+      );
+      
+      matchingEngines.forEach(engine => {
+        suggestions.push({
+          type: 'engine',
+          name: engine.name,
+          description: engine.description,
+          icon: engine.icon
+        });
+      });
+
+      // Add tab duplication if it starts with @duplicate
+      if (searchTerm.startsWith('duplicate')) {
+        const activeTask = this.tasks[this.activeTaskIndex];
+        if (activeTask && activeTask.tabs.length > 0) {
+          const duplicateQuery = searchTerm.substring(9).trim().toLowerCase();
+          activeTask.tabs.forEach(tab => {
+            if (tab.title.toLowerCase().includes(duplicateQuery) || 
+                tab.url.toLowerCase().includes(duplicateQuery)) {
+              suggestions.push({
+                type: 'duplicate',
+                name: tab.title,
+                description: 'Duplicate this tab',
+                icon: '📋',
+                tab: tab
+              });
+            }
+          });
+        }
+      }
+
+      if (suggestions.length === 0) {
+        autocompleteContainer.style.display = 'none';
+        return;
+      }
+
+      filteredSuggestions = suggestions;
+      autocompleteContainer.innerHTML = '';
+      
+      suggestions.forEach((suggestion, index) => {
+        const item = document.createElement('div');
+        item.className = 'query-input__autocomplete-item';
+        item.style.cssText = `
+          padding: 12px 16px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          border-bottom: 1px solid #333;
+          transition: background-color 0.2s;
+        `;
+        
+        if (suggestion.type === 'command') {
+          item.innerHTML = `
+            <div style="font-size: 16px;">${suggestion.icon}</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; color: #fff;">@${suggestion.name}</div>
+              <div style="font-size: 12px; color: #999;">${suggestion.description}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', () => {
+            const currentValue = queryInput_textArea.innerText;
+            const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+            queryInput_textArea.innerText = beforeAt + `@${suggestion.name} `;
+            autocompleteContainer.style.display = 'none';
+            queryInput_textArea.focus();
+          });
+        } else if (suggestion.type === 'engine') {
+          item.innerHTML = `
+            <div style="font-size: 16px;">${suggestion.icon}</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; color: #fff;">@${suggestion.name}</div>
+              <div style="font-size: 12px; color: #999;">${suggestion.description}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', () => {
+            const currentValue = queryInput_textArea.innerText;
+            const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+            queryInput_textArea.innerText = beforeAt + `@${suggestion.name} `;
+            autocompleteContainer.style.display = 'none';
+            queryInput_textArea.focus();
+          });
+        } else if (suggestion.type === 'duplicate') {
+          item.innerHTML = `
+            <div style="font-size: 16px;">${suggestion.icon}</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; color: #fff;">@duplicate</div>
+              <div style="font-size: 12px; color: #999;">${suggestion.name}</div>
+            </div>
+          `;
+          
+          item.addEventListener('click', async () => {
+            queryInput_textArea.innerText = `@duplicate ${suggestion.name}`;
+            await submitQuery();
+          });
+        }
+
+        item.addEventListener('mouseenter', () => {
+          item.style.backgroundColor = '#333';
+        });
+
+        item.addEventListener('mouseleave', () => {
+          item.style.backgroundColor = 'transparent';
+        });
+
+        autocompleteContainer.appendChild(item);
+      });
+
+      autocompleteContainer.style.display = 'block';
+      selectedIndex = -1;
+    };
+
+    const hideAutocomplete = () => {
+      autocompleteContainer.style.display = 'none';
+      selectedIndex = -1;
+    };
+
+    const selectAutocompleteItem = (direction) => {
+      if (filteredSuggestions.length === 0) return;
+
+      const items = autocompleteContainer.querySelectorAll('.query-input__autocomplete-item');
+      
+      if (selectedIndex >= 0) {
+        items[selectedIndex].style.backgroundColor = 'transparent';
+      }
+
+      if (direction === 'up') {
+        selectedIndex = selectedIndex <= 0 ? items.length - 1 : selectedIndex - 1;
+      } else {
+        selectedIndex = selectedIndex >= items.length - 1 ? 0 : selectedIndex + 1;
+      }
+
+      items[selectedIndex].style.backgroundColor = '#333';
+      items[selectedIndex].scrollIntoView({ block: 'nearest' });
+    };
+
+    const handleTabCompletion = async () => {
+      const currentValue = queryInput_textArea.innerText;
+      
+      if (!currentValue.startsWith('@')) {
+        return;
+      }
+
+      const searchTerm = currentValue.substring(1).toLowerCase();
+      
+      // Find matching search engines
+      const matchingEngines = searchEngines.filter(engine => 
+        engine.name.toLowerCase().startsWith(searchTerm)
+      );
+
+      // Find matching duplicate commands
+      let matchingDuplicates = [];
+      if (searchTerm.startsWith('duplicate')) {
+        const activeTask = this.tasks[this.activeTaskIndex];
+        if (activeTask && activeTask.tabs.length > 0) {
+          const duplicateQuery = searchTerm.substring(9).trim().toLowerCase();
+          activeTask.tabs.forEach(tab => {
+            if (tab.title.toLowerCase().startsWith(duplicateQuery) || 
+                tab.url.toLowerCase().includes(duplicateQuery)) {
+              matchingDuplicates.push({
+                type: 'duplicate',
+                name: tab.title,
+                tab: tab
+              });
+            }
+          });
+        }
+      }
+
+      // If there's exactly one match, complete it
+      if (matchingEngines.length === 1) {
+        const engine = matchingEngines[0];
+        const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+        const newText = beforeAt + `@${engine.name} `;
+        queryInput_textArea.innerText = newText;
+        
+        // Position cursor at the end
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(queryInput_textArea);
+        range.collapse(false); // false means collapse to end
+        selection.removeAllRanges();
+        selection.addRange(range);
+        return;
+      }
+
+      if (matchingDuplicates.length === 1) {
+        const duplicate = matchingDuplicates[0];
+        const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+        const newText = beforeAt + `@duplicate ${duplicate.name}`;
+        queryInput_textArea.innerText = newText;
+        
+        // Position cursor at the end
+        const range = document.createRange();
+        const selection = window.getSelection();
+        range.selectNodeContents(queryInput_textArea);
+        range.collapse(false); // false means collapse to end
+        selection.removeAllRanges();
+        selection.addRange(range);
+        
+        // Execute the duplicate command immediately
+        await submitQuery();
+        return;
+      }
+
+      // If multiple matches, show autocomplete
+      if (matchingEngines.length > 1 || matchingDuplicates.length > 1) {
+        showAutocomplete(currentValue);
+      }
+    };
 
     // Setup focus overlay click handler to dismiss editor mode
     if (focusOverlay) {
@@ -550,6 +1002,56 @@ class App {
       
       console.log('Query submitted:', query);
       
+      // Check if query is an LLM provider for easter egg
+      console.log('🔍 Checking query for easter egg:', query);
+      if (this.isLLMProvider(query)) {
+        console.log('🎉 Easter egg triggered! Redirecting to lobotomy memes...');
+        const lobotomyUrl = this.getLobotomyUrl();
+        console.log('📁 Lobotomy URL:', lobotomyUrl);
+        if (this.isGeneralTaskActive) {
+          this.createTabInGeneralTask(lobotomyUrl, '🧠 SELF-LOBOTOMY 🧠', 'You\'ve been lobotomized!');
+        } else {
+          await this.createTab(lobotomyUrl, '🧠 SELF-LOBOTOMY 🧠', 'You\'ve been lobotomized!');
+        }
+        
+        // Clear the query input
+        queryInput_textArea.innerText = '';
+        queryInput_textArea.style.height = 'auto';
+        
+        // Activate webview and collapse query input
+        this.activateWebview();
+        return;
+      }
+      
+      // Check if query is a search engine command (@engine or @engine query)
+      const searchMatch = query.match(/^@(\w+)(?:\s+(.+))?$/);
+      if (searchMatch) {
+        console.log('🔍 Processing search engine command:', query);
+        await this.processUrlInput(query);
+        
+        // Clear the query input
+        queryInput_textArea.innerText = '';
+        queryInput_textArea.style.height = 'auto';
+        
+        // Activate webview and collapse query input
+        this.activateWebview();
+        return;
+      }
+      
+      // Check if query is a direct URL
+      if (query.includes('.com') || query.includes('.org') || query.includes('.net') || query.includes('.ai') || query.startsWith('http')) {
+        console.log('🔍 Processing direct URL:', query);
+        await this.processUrlInput(query);
+        
+        // Clear the query input
+        queryInput_textArea.innerText = '';
+        queryInput_textArea.style.height = 'auto';
+        
+        // Activate webview and collapse query input
+        this.activateWebview();
+        return;
+      }
+      
       try {
         // Call the fake backend API
         const response = await fetch('http://127.0.0.1:5000/api/search', {
@@ -567,37 +1069,60 @@ class App {
         const data = await response.json();
         console.log('Backend response:', data);
         
-        // Check if data is an array (direct response) or has a links property
-        const links = Array.isArray(data) ? data : (data.links || []);
+        // Store the current query and intent for future tab creation
+        this.currentQuery = query;
+        this.currentIntent = data.intent || 'Answer';
         
-        if (links && links.length > 0) {
-          // Create a new task for this query
-          const taskTitle = query.length > 30 ? query.substring(0, 30) + '...' : query;
-          const taskIcon = this.detectTaskIcon(links);
-          this.createTask(taskTitle, taskIcon);
+        // Handle different response formats based on intent
+        const intent = this.currentIntent;
+        console.log('Detected intent:', intent);
+        console.log('Response format:', intent === 'News' || intent === 'Research' ? 'links' : 'query');
+        
+        if (intent === 'News' || intent === 'Research') {
+          // Check if data is an array (direct response) or has a links property
+          const links = Array.isArray(data) ? data : (data.links || []);
           
-          // Create tabs for each link under the new task
-          links.forEach((link, index) => {
-            this.createTab(link.link, link.title, link.snippet);
-          });
-          
-          // Clear the query input
-          queryInput_textArea.innerText = '';
-          queryInput_textArea.style.height = 'auto';
-          
-          // Activate webview and collapse query input
-          this.activateWebview();
-          
-          console.log(`Created task "${taskTitle}" with ${links.length} tabs for query: "${query}"`);
+          if (links && links.length > 0) {
+            // Create a new task for News and Research intents
+            const taskTitle = query.length > 30 ? query.substring(0, 30) + '...' : query;
+            const taskIcon = this.detectTaskIcon(links);
+            this.createTask(taskTitle, taskIcon);
+            
+            // Create tabs for each link under the new task
+            // Note: createTask already switches to the new task
+            for (const link of links) {
+              await this.createTab(link.link, link.title, link.snippet);
+            }
+            
+            console.log(`Created task "${taskTitle}" with ${links.length} tabs for query: "${query}"`);
+          }
         } else {
-          console.error('Invalid response from backend:', data);
+          // For Navigational, Transactional, and Answer intents, add to General task
+          const searchQuery = data.query || query;
+          const googleUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+          
+          // Switch to General task first
+          this.switchToGeneralTask();
+          
+          // Create a new tab in the General task
+          this.createTabInGeneralTask(googleUrl, `${searchQuery} - Google Search`);
+          
+          console.log(`Added Google search tab to General task for query: "${searchQuery}"`);
         }
+        
+        // Clear the query input
+        queryInput_textArea.innerText = '';
+        queryInput_textArea.style.height = 'auto';
+        
+        // Activate webview and collapse query input
+        this.activateWebview();
         
       } catch (error) {
         console.error('Error calling backend API:', error);
-        // Fallback: create a single tab with a Google search
+        // Fallback: create a single tab with a Google search in General task
         const fallbackUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-        this.createTab(fallbackUrl, `${query} - Search`);
+        this.switchToGeneralTask();
+        this.createTabInGeneralTask(fallbackUrl, `${query} - Search`, '');
         
         // Clear the query input
         queryInput_textArea.innerText = '';
@@ -616,10 +1141,50 @@ class App {
       }
     };
     
-    queryInput_textArea.addEventListener('input', adjustHeight);
+    queryInput_textArea.addEventListener('input', (e) => {
+      adjustHeight();
+      showAutocomplete(e.target.innerText);
+    });
     
     // Key-based Events
     queryInput_textArea.addEventListener('keydown', (e) => {
+      // Handle autocomplete navigation
+      if (autocompleteContainer.style.display === 'block') {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          selectAutocompleteItem('down');
+          return;
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          selectAutocompleteItem('up');
+          return;
+        } else if (e.key === 'Enter' && selectedIndex >= 0 && filteredSuggestions.length > 0) {
+          e.preventDefault();
+          const selectedSuggestion = filteredSuggestions[selectedIndex];
+          
+          if (selectedSuggestion.type === 'engine') {
+            const currentValue = queryInput_textArea.innerText;
+            const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
+            queryInput_textArea.innerText = beforeAt + `@${selectedSuggestion.name} `;
+            autocompleteContainer.style.display = 'none';
+            queryInput_textArea.focus();
+            return;
+          } else if (selectedSuggestion.type === 'duplicate') {
+            queryInput_textArea.innerText = `@duplicate ${selectedSuggestion.name}`;
+            autocompleteContainer.style.display = 'none';
+            submitQuery();
+            return;
+          }
+        } else if (e.key === 'Escape') {
+          hideAutocomplete();
+          return;
+        } else if (e.key === 'Tab') {
+          e.preventDefault();
+          handleTabCompletion();
+          return;
+        }
+      }
+      
       // Escape key to exit editor mode
       if (e.key === 'Escape' && queryInput_container.classList.contains('is-editor-mode')) {
         e.preventDefault();
@@ -644,6 +1209,20 @@ class App {
 
     // Button Clicks
     queryInput_sendButton?.addEventListener('click', submitQuery);
+
+    // Hide autocomplete when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.query-input-container')) {
+        hideAutocomplete();
+      }
+    });
+
+    // Hide autocomplete when input loses focus
+    queryInput_textArea.addEventListener('blur', () => {
+      setTimeout(() => {
+        hideAutocomplete();
+      }, 150);
+    });
 
 
 
@@ -687,7 +1266,7 @@ class App {
     const networkModal = document.getElementById('network-modal');
     
     if (networkButton && networkModal) {
-      networkButton.addEventListener('click', (e) => {
+      networkButton.addEventListener('click', async (e) => {
         e.preventDefault();
         e.stopPropagation();
         
@@ -697,6 +1276,9 @@ class App {
         
         // Update network information
         this.updateNetworkInfo();
+        
+        // Update network graph with API data
+        await this.updateNetworkGraph();
       });
       
       // Close modal when clicking the overlay
@@ -721,7 +1303,7 @@ class App {
     }
   }
 
-  updateNetworkInfo() {
+  async updateNetworkInfo() {
     // Update connection status
     const connectionStatus = document.getElementById('connection-status');
     if (connectionStatus) {
@@ -750,7 +1332,7 @@ class App {
     }
     
     // Update network graph
-    this.updateNetworkGraph();
+    await this.updateNetworkGraph();
   }
 
 
@@ -759,14 +1341,14 @@ class App {
     const refreshButton = document.getElementById('refresh-network');
     
     if (refreshButton) {
-      refreshButton.addEventListener('click', () => {
+      refreshButton.addEventListener('click', async () => {
         this.updateNetworkInfo();
-        this.updateNetworkGraph();
+        await this.updateNetworkGraph();
       });
     }
   }
 
-  updateNetworkGraph() {
+  async updateNetworkGraph() {
     const container = document.getElementById('network-graph');
     if (!container || typeof d3 === 'undefined') return;
 
@@ -810,28 +1392,67 @@ class App {
       };
     }
 
-    // Sample data with three types: concept, query, link
-    const nodes = [
-      { id: 1, name: 'Photosynthesis', type: 'concept' },
-      { id: 2, name: 'What is photosynthesis?', type: 'query' },
-      { id: 3, name: 'Wikipedia', type: 'link' },
-      { id: 4, name: 'Chlorophyll', type: 'concept' },
-      { id: 5, name: 'How does chlorophyll work?', type: 'query' },
-      { id: 6, name: 'Britannica', type: 'link' },
-      { id: 7, name: 'Light Energy', type: 'concept' },
-      { id: 8, name: 'Energy Conversion', type: 'concept' },
-      { id: 9, name: 'Research Paper', type: 'link' }
-    ];
-    const links = [
-      { source: 1, target: 2 },
-      { source: 2, target: 3 },
-      { source: 1, target: 4 },
-      { source: 4, target: 5 },
-      { source: 5, target: 6 },
-      { source: 1, target: 7 },
-      { source: 7, target: 8 },
-      { source: 8, target: 9 }
-    ];
+    // Fetch data from API
+    let nodes = [];
+    let links = [];
+    
+    try {
+      const response = await fetch('http://127.0.0.1:5000/api/get-graph', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Graph API response:', data);
+        
+        // Process API data to create nodes and links
+        if (data.concepts && data.queries && data.relationships) {
+          // Create nodes from concepts
+          const conceptNodes = data.concepts.map((concept, index) => ({
+            id: `concept_${index}`,
+            name: concept,
+            type: 'concept'
+          }));
+          
+          // Create nodes from queries
+          const queryNodes = data.queries.map((query, index) => ({
+            id: `query_${index}`,
+            name: query,
+            type: 'query'
+          }));
+          
+          // Combine all nodes
+          nodes = [...conceptNodes, ...queryNodes];
+          
+          // Create links from relationships
+          links = data.relationships.map((relationship, index) => ({
+            source: relationship.source,
+            target: relationship.target
+          }));
+        } else if (data.nodes && data.links) {
+          // Alternative format: direct nodes and links
+          nodes = data.nodes;
+          links = data.links;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching graph data:', error);
+    }
+    
+    // If no data from API, show empty state
+    if (nodes.length === 0) {
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #666; font-size: 16px;">
+          <div style="margin-bottom: 16px;">📊</div>
+          <div>No graph data available</div>
+          <div style="font-size: 14px; margin-top: 8px;">Check your API endpoint at /api/get-graph</div>
+        </div>
+      `;
+      return;
+    }
 
     // Create SVG
     const width = container.clientWidth;
@@ -1040,6 +1661,20 @@ class App {
           }
           
           if (url) {
+            // Check for LLM provider easter egg
+            if (this.isLLMProvider(url)) {
+              console.log('🎉 Easter egg triggered! Redirecting to lobotomy memes...');
+              const lobotomyUrl = this.getLobotomyUrl();
+              webview.src = lobotomyUrl;
+              // Update current tab URL
+              if (this.tabs[this.activeTabIndex]) {
+                this.tabs[this.activeTabIndex].url = lobotomyUrl;
+                this.tabs[this.activeTabIndex].title = '🧠 SELF-LOBOTOMY 🧠';
+                this.renderTabs();
+              }
+              return;
+            }
+            
             // Update current tab URL
             if (this.tabs[this.activeTabIndex]) {
               this.tabs[this.activeTabIndex].url = url;
@@ -1079,6 +1714,19 @@ class App {
       // Update current tab URL
       if (this.tabs[this.activeTabIndex]) {
         this.tabs[this.activeTabIndex].url = e.url;
+      }
+      
+      // Check for LLM provider easter egg
+      if (this.isLLMProvider(e.url)) {
+        console.log('🎉 Easter egg triggered! Redirecting to lobotomy memes...');
+        const lobotomyUrl = this.getLobotomyUrl();
+        webview.src = lobotomyUrl;
+        // Update tab title and URL
+        if (this.tabs[this.activeTabIndex]) {
+          this.tabs[this.activeTabIndex].url = lobotomyUrl;
+          this.tabs[this.activeTabIndex].title = '🧠 SELF-LOBOTOMY 🧠';
+          this.renderTabs();
+        }
       }
     });
 
@@ -1461,10 +2109,10 @@ class App {
             </div>
           `;
           
-          item.addEventListener('click', () => {
+          item.addEventListener('click', async () => {
             // Fill in the command and execute it
             urlInput.value = `@duplicate ${suggestion.name}`;
-            this.processUrlInput(urlInput.value);
+            await this.processUrlInput(urlInput.value);
             urlInput.value = '';
             autocomplete.style.display = 'none';
             urlInput.focus();
@@ -1506,7 +2154,7 @@ class App {
       showAutocomplete(e.target.value);
     });
 
-    urlInput.addEventListener('keydown', (e) => {
+    urlInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         
@@ -1524,7 +2172,7 @@ class App {
           } else if (selectedSuggestion.type === 'duplicate') {
             // Fill in and execute the duplicate command
             urlInput.value = `@duplicate ${selectedSuggestion.name}`;
-            this.processUrlInput(urlInput.value);
+            await this.processUrlInput(urlInput.value);
             urlInput.value = '';
             autocomplete.style.display = 'none';
             urlInput.focus();
@@ -1540,7 +2188,7 @@ class App {
           hideAutocomplete();
           
           // Process the input
-          this.processUrlInput(input);
+          await this.processUrlInput(input);
         }
       } else if (e.key === 'Escape') {
         hideAutocomplete();
@@ -1557,7 +2205,7 @@ class App {
       }
     });
 
-    const handleTabCompletion = () => {
+    const handleTabCompletion = async () => {
       const currentValue = urlInput.value;
       
       if (!currentValue.startsWith('@')) {
@@ -1603,7 +2251,7 @@ class App {
         const beforeAt = currentValue.substring(0, currentValue.indexOf('@'));
         urlInput.value = beforeAt + `@duplicate ${duplicate.name}`;
         // Execute the duplicate command immediately
-        this.processUrlInput(urlInput.value);
+        await this.processUrlInput(urlInput.value);
         urlInput.value = '';
         return;
       }
@@ -1627,9 +2275,156 @@ class App {
         hideAutocomplete();
       }, 150);
     });
+    
+
   }
 
-  processUrlInput(input) {
+  // Check if URL is an LLM provider for easter egg
+  isLLMProvider(url) {
+    const llmProviders = [
+      'chat.com',
+      'chatgpt.com',
+      'chatgpt',
+      'openai.com',
+      'openai',
+      'claude.ai',
+      'claude',
+      'anthropic.com',
+      'anthropic',
+      'bard.google.com',
+      'bard',
+      'gemini.google.com',
+      'gemini',
+      'bing.com/chat',
+      'copilot.microsoft.com',
+      'copilot',
+      'perplexity.ai',
+      'perplexity',
+      'poe.com',
+      'poe',
+      'character.ai',
+      'character',
+      'replika.com',
+      'replika',
+      'jasper.ai',
+      'jasper',
+      'writesonic.com',
+      'writesonic',
+      'copy.ai',
+      'copy',
+      'rytr.me',
+      'rytr',
+      'simplified.co',
+      'simplified',
+      'contentbot.ai',
+      'contentbot',
+      'peppertype.ai',
+      'peppertype'
+    ];
+    
+    const urlLower = url.toLowerCase();
+    const isMatch = llmProviders.some(provider => urlLower.includes(provider));
+    console.log('🔍 Checking URL:', url, 'for LLM providers. Match:', isMatch);
+    return isMatch;
+  }
+
+  // Create lobotomy meme page as data URL
+  getLobotomyUrl() {
+    const lobotomyHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lobotomy Memes</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #000;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 30px;
+            color: #ff6b6b;
+        }
+        
+        .meme-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .meme-item {
+            max-width: 300px;
+            border: 3px solid #ff6b6b;
+            border-radius: 10px;
+            overflow: hidden;
+            transition: transform 0.3s ease;
+        }
+        
+        .meme-item:hover {
+            transform: scale(1.05);
+        }
+        
+        .meme-item img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        .message {
+            font-size: 1.5em;
+            margin: 30px 0;
+            color: #ffd93d;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 SELF-LOBOTOMY 🧠</h1>
+    <div class="message">You've been lobotomized! 🤪</div>
+    
+    <div class="meme-container">
+        <div class="meme-item">
+            <img src="https://i.etsystatic.com/27207670/r/il/2f0c9d/5883052442/il_fullxfull.5883052442_gjy7.jpg" alt="Lobotomy Meme 1">
+        </div>
+        
+        <div class="meme-item">
+            <img src="https://m.media-amazon.com/images/I/61pNqWhfN5L.jpg" alt="Lobotomy Meme 2">
+        </div>
+        
+        <div class="meme-item">
+            <img src="https://ih1.redbubble.net/image.5027067807.8235/flat,750x,075,f-pad,750x1000,f8f8f8.u3.jpg" alt="Lobotomy Meme 3">
+        </div>
+        
+        <div class="meme-item">
+            <img src="https://i.imgflip.com/87g61e.jpg" alt="Lobotomy Meme 4">
+        </div>
+        
+        <div class="meme-item">
+            <img src="https://i.etsystatic.com/12176547/r/il/813637/4505930776/il_1080xN.4505930776_psz9.jpg" alt="Lobotomy Meme 5">
+        </div>
+        
+        <div class="meme-item">
+            <img src="https://preview.redd.it/comets-max-barrier-has-us-all-acting-like-fiends-for-invites-v0-xrvqls4eqdcf1.png?width=640&crop=smart&auto=webp&s=48f9b8c5a7c94a94f242a27160908a0f7af240ab" alt="Lobotomy Meme 6">
+        </div>
+    </div>
+    
+    <div class="message">Welcome to the lobotomy club! 🎉</div>
+</body>
+</html>`;
+    
+    return 'data:text/html;charset=utf-8,' + encodeURIComponent(lobotomyHTML);
+  }
+
+  async processUrlInput(input) {
     // Check if input contains delimiters for multiple tabs
     const delimiters = ['|', ';', ','];
     let hasDelimiter = false;
@@ -1646,9 +2441,9 @@ class App {
     if (hasDelimiter) {
       // Split by delimiter and process each part
       const parts = input.split(delimiter).map(part => part.trim()).filter(part => part.length > 0);
-      parts.forEach(part => {
-        this.processUrlInput(part);
-      });
+      for (const part of parts) {
+        await this.processUrlInput(part);
+      }
       return;
     }
 
@@ -1854,8 +2649,22 @@ class App {
       }
       tabTitle = `${engine} homepage`;
     }
+    
+          // Check if it's an LLM provider for easter egg (check both query and URL)
+      console.log('🔍 Checking search query for easter egg:', query);
+      if (this.isLLMProvider(query) || this.isLLMProvider(searchUrl)) {
+        console.log('🎉 Easter egg triggered! Redirecting to lobotomy memes...');
+        const lobotomyUrl = this.getLobotomyUrl();
+        console.log('📁 Lobotomy URL:', lobotomyUrl);
+        // Always add to General task for search engine results
+        this.switchToGeneralTask();
+        this.createTabInGeneralTask(lobotomyUrl, '🧠 SELF-LOBOTOMY 🧠', 'You\'ve been lobotomized!');
+        return;
+      }
       
-      this.createTab(searchUrl, tabTitle, '');
+      // Always add search engine results to General task
+      this.switchToGeneralTask();
+      this.createTabInGeneralTask(searchUrl, tabTitle, '');
       return;
     }
     
@@ -1869,7 +2678,22 @@ class App {
     // Validate URL
     try {
       new URL(url);
-      this.createTab(url, input);
+      
+      // Check if it's an LLM provider for easter egg
+      console.log('🔍 Checking URL for easter egg:', url);
+      if (this.isLLMProvider(url)) {
+        console.log('🎉 Easter egg triggered! Redirecting to lobotomy memes...');
+        const lobotomyUrl = this.getLobotomyUrl();
+        console.log('📁 Lobotomy URL:', lobotomyUrl);
+        // Always add to General task for direct URLs
+        this.switchToGeneralTask();
+        this.createTabInGeneralTask(lobotomyUrl, '🧠 SELF-LOBOTOMY 🧠', 'You\'ve been lobotomized!');
+        return;
+      }
+      
+      // Always add direct URLs to General task
+      this.switchToGeneralTask();
+      this.createTabInGeneralTask(url, input, '');
     } catch (e) {
       console.error('Invalid URL:', input);
       // Could show an error message here

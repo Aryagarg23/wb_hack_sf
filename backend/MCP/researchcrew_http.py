@@ -9,9 +9,10 @@ from crewai.tools import BaseTool
 from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 import json
+import weave
 
 # Load environment variables
-load_dotenv()
+load_dotenv("backend/MCP/.env")
 
 # MCP server base URL
 MCP_BASE_URL = os.getenv("MCP_BASE_URL", "http://localhost:8000")
@@ -137,6 +138,7 @@ crew = Crew(
 )
 
 def run(topic: str):
+    weave.init("crewai-ai-research-agent")
     inputs = {"topic": topic, "current_date": datetime.now().strftime("%Y-%m-%d")}
     final = crew.kickoff(inputs=inputs)
     sources = []

@@ -21,13 +21,16 @@ def search():
     intent = result.get('most_significant').get('intent')
     print("intent", intent)
     query.intent = intent
-    answer = {'data': query.getContent(), 'intent': intent}
 
     if intent == 'News':
-        answer = consolidate(query.getContent(), news_run)
-
-    if intent == 'Research':
-        answer = consolidate(query.getContent(), res_run)
+        links = consolidate(query.getContent(), news_run)
+        answer = {'links': links, 'intent': intent}
+    elif intent == 'Research':
+        links = consolidate(query.getContent(), res_run)
+        answer = {'links': links, 'intent': intent}
+    else:
+        # For Navigational, Transactional, and Answer intents, just return the query
+        answer = {'query': query.getContent(), 'intent': intent}
 
 
     if answer != '':
@@ -94,7 +97,7 @@ def get_all_links_to_concept():
 
 @app.route('/api/get-graph', methods=['GET'])
 def get_graph():
-    graph = get_graph()
+    graph = retrieve_graph()
 
     return jsonify(graph), 200
 

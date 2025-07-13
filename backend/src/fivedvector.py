@@ -27,7 +27,7 @@ def collect_all_intent(query):
 
     roberta_vector = list(classify_intent_zero_shot(query).get('all_scores').values())
     for i, score in enumerate(roberta_vector):
-        if i > 0.85:
+        if score > 0.85:
             return({
                 "most_significant": {
                     "source": source_names[1],

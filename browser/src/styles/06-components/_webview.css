@@ -15,6 +15,30 @@
   bottom: 0;
   z-index: 1;
   pointer-events: auto;
+  
+  /* Hide scrollbars in webview */
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* Internet Explorer 10+ */
+}
+
+/* Hide webview scrollbars for webkit browsers */
+.browser-webview::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.browser-webview::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+.browser-webview::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+.browser-webview::-webkit-scrollbar-corner {
+  display: none !important;
 }
 
 /* When webview is active, ensure the webview element fills completely */
@@ -48,6 +72,30 @@
   overflow: hidden;
   z-index: 1;
   min-height: 100%; /* Ensure minimum height */
+  
+  /* Hide scrollbars in webview container */
+  scrollbar-width: none !important; /* Firefox */
+  -ms-overflow-style: none !important; /* Internet Explorer 10+ */
+}
+
+/* Hide webview container scrollbars for webkit browsers */
+.webview-container::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+.webview-container::-webkit-scrollbar-track {
+  display: none !important;
+}
+
+.webview-container::-webkit-scrollbar-thumb {
+  display: none !important;
+}
+
+.webview-container::-webkit-scrollbar-corner {
+  display: none !important;
 }
 
 /* When webview is active, completely override positioning */

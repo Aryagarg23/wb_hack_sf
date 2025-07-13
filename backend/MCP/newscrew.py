@@ -14,8 +14,9 @@ from pydantic import BaseModel, Field, constr, validator
 from crewai import Agent, Crew, Process, Task
 from crewai.tools import BaseTool
 from langchain_openai import ChatOpenAI
+import weave
 
-load_dotenv("backend/.env")
+load_dotenv('backend/.env')
 # ──────────────────────── load env vars ───────────────────────
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = "gpt-4o"
