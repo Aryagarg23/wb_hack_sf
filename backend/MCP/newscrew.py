@@ -1,4 +1,4 @@
-# learning_assistant.py  – NEWS-centric version
+# learning_assistant.py  – NEWS-centric version with highlights
 # ---------------------------------------------------------------
 # Requires:  OPENAI_API_KEY, NEWS_API_KEY, EXA_API_KEY (.env)
 # Optional:  S2_API_KEY if you keep the research tools
@@ -7,20 +7,27 @@ import os, json, requests, subprocess
 from datetime import datetime, timedelta
 from textwrap import dedent
 from typing import Type
-
+import subprocess
+from exa_py import Exa
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr, validator
 from crewai import Agent, Crew, Process, Task
 from crewai.tools import BaseTool
 from langchain_openai import ChatOpenAI
 
+load_dotenv("backend/.env")
 # ──────────────────────── load env vars ───────────────────────
-load_dotenv()
-OPENAI_MODEL = "gpt-4o-mini"
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+OPENAI_MODEL = "gpt-4o"
 
 # ────────────────────────── schemas ───────────────────────────
 class SearchInput(BaseModel):
-    query: str = Field(..., description="Search text")
+    """Minimal query-only payload."""
+    query: constr(strip_whitespace=True, min_length=1) = Field(
+        ...,
+        description="Free-text search query."
+    )
+
 
 class NewsSearchInput(SearchInput):
     """Adds optional ISO-8601 date filters & language."""
@@ -37,22 +44,37 @@ class ExaSearchTool(BaseTool):
     args_schema: Type[BaseModel] = SearchInput
 
     def _run(self, query: str, **_) -> str:
-        body = {"query": query, "numResults": 5, "contents": {"text": True}, category: "news"}
-        cmd = [
-            "curl", "-s", "-X", "POST", "https://api.exa.ai/search",
-            "--header", "content-type: application/json",
-            "--header", f"x-api-key: {os.getenv('EXA_API_KEY')}",
-            "--data", json.dumps(body),
-        ]
-        try:
-            resp = subprocess.run(cmd, capture_output=True,
-                                  text=True, check=True, timeout=20)
-            return resp.stdout           # already JSON
-        except Exception as e:
-            return f'[Exa search failed] {e}'
 
+        if isinstance(query, str) and query.strip().startswith("{"):
+            try:
+                query_obj = json.loads(query)
+                query = query_obj.get("query", "")
+            except Exception as e:
+                return f"[Exa input parsing error] {e}"
+        try:
+            exa = Exa(api_key=os.getenv("EXA_API_KEY"))
+            print(query)
+            results = exa.search_and_contents(
+                query,
+                type="neural",
+                num_results=5,
+                highlights=True,
+                livecrawl="always"
+            )
+
+            parsed = [
+                {
+                    "title": result.title,
+                    "url": result.url,
+                    "snippet": " ".join(result.highlights or ["(no highlights found)"])
+                }
+                for result in results.results
+            ]
+            return json.dumps(parsed, indent=2)
+        except Exception as e:
+            return f'[Exa search failed via SDK] {e}'
 class NewsAPISearchTool(BaseTool):
-    """Live/archived news via NewsAPI.org “everything” endpoint."""
+    """Live/archived news via NewsAPI.org "everything" endpoint."""
     name: str = "news_api_search"
     description: str = "Search NewsAPI for up-to-the-minute headlines & articles."
     args_schema: Type[BaseModel] = NewsSearchInput
@@ -131,28 +153,16 @@ def dedupe(sources: list[dict]) -> list[dict]:
 router = Agent(
     role="News Router",
     backstory=dedent("""\
-        You decide which search tool(s) fit the request.
+        You decide which search tool(s) fit the request and collect sources.
         • If the prompt contains 'news', 'headline', 'today', 'latest',
           or a recent date, use **news_api_search**.
         • If it asks about coverage over time ('since 2022', 'evolution',
           'trend'), add **gdelt_search**.
         • Add **exa_search** for tutorials, blog context, or developer angles.
-        You may call multiple tools and must return a single JSON array
-        named `sources` (5-10 de-duplicated items)."""),
-    goal="Pick tools, fetch results, emit a `sources` JSON list.",
+        You must call the tools and return the raw results for processing."""),
+    goal="Pick tools, fetch results, return raw source data.",
     tools=[NewsAPISearchTool(), GDELTSearchTool(), ExaSearchTool()],
-    llm=ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.3),
-    allow_delegation=False,
-    verbose=True,
-    max_iter=4,
-)
-
-summariser = Agent(
-    role="News Explainer",
-    backstory="Turns raw links into short, beginner-friendly news digests.",
-    goal="Produce clear, date-stamped news notes.",
-    tools=[],
-    llm=ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.55),
+    llm=ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.3, api_key=OPENAI_API_KEY),
     allow_delegation=False,
     verbose=True,
     max_iter=4,
@@ -161,43 +171,23 @@ summariser = Agent(
 # ───────────────────────── tasks ──────────────────────────────
 router_task = Task(
     description=dedent("""
-        **Step 1 – Pick tools & collect sources**
+        **Step 1 – Collect sources**
 
         Topic: {{topic}}
 
-        • Decide which of `news_api_search`, `gdelt_search`, `exa_search`
-          (or a combo) is appropriate.
-        • Call them.  Merge and de-duplicate the results with `title`, `url`,
-          and `snippet`.  Keep 5–10 items max.
-        • Return exactly *one* JSON list named `sources`.
+        • Use appropriate search tools to find relevant news articles
+        • Focus on recent, credible sources
+        • Collect the raw search results with titles, URLs, and snippets
     """),
-    expected_output="JSON list of 5-10 sources.",
+    expected_output="Raw search results from news tools.",
     agent=router,
 )
 
-summary_task = Task(
-    description=dedent("""
-        **Step 2 – Write digest**
-
-        For every item in `router_output.json`, craft:
-
-        ### *Headline* (Outlet, YYYY-MM-DD)
-        **What happened:** …  
-        **Why it matters:** …  
-        **Source:** <url>
-
-        • Keep each block ≈60-80 words.
-        • Use plain English and minimal jargon.
-    """),
-    expected_output="Markdown digest for each source.",
-    agent=summariser,
-    context=[router_task],
-)
 
 # ───────────────────────── crew ───────────────────────────────
 crew = Crew(
-    agents=[router, summariser],
-    tasks=[router_task, summary_task],
+    agents=[router],
+    tasks=[router_task],
     process=Process.sequential,
     verbose=True,
 )
@@ -208,31 +198,25 @@ def run(topic: str):
               "current_date": datetime.now().strftime("%Y-%m-%d")}
     final = crew.kickoff(inputs=inputs)
 
-    # Get sources from router output
-    sources = []
-    if router_task.output_file:
+    # Get highlight-source pairs from highlighter output
+    results = []
+    try:
+        if hasattr(router_task.output, 'raw'):
+            output_str = router_task.output.raw
+        else:
+            output_str = str(router_task.output)
+
+        # Try to parse as JSON
         try:
-            with open(router_task.output_file, 'r') as f:
-                sources = json.loads(f.read())
-        except Exception as e:
-            print(f"Error reading sources: {e}")
-            sources = []
+            results = json.loads(output_str)
+            if not isinstance(results, list):
+                results = []
+        except json.JSONDecodeError:
+            # If not valid JSON, try to extract from text
+            print(f"Could not parse JSON, raw output: {output_str}")
+            results = []
+    except Exception as e:
+        print(f"Error parsing output: {e}")
+        results = []
 
-    # Create JSON response with links
-    result = {
-        "topic": topic,
-        "digest": str(summary_task.output) if summary_task.output else "",
-        "links": sources,
-        "timestamp": datetime.now().isoformat()
-    }
-
-    print("\n\n### NEWS DIGEST ###\n")
-    print(summary_task.output)
-    print(f"\n### LINKS (JSON) ###\n")
-    print(json.dumps(result, indent=2))
-
-    return result
-
-# Quick smoke-test
-if __name__ == "__main__":
-   print(run("Latest developments in AI chip export controls"))
+    return output_str

@@ -1,47 +1,69 @@
-# learning_assistant.py  – prompts tweaked for general learning
-import os, json, requests, subprocess
+# learning_assistant.py – prompts tweaked for general learning, SerpAPI version
+import os, json, requests
 from datetime import datetime
 from textwrap import dedent
 from typing import Type
-
+import subprocess
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, constr
 from crewai import Agent, Crew, Process, Task
 from crewai.tools import BaseTool
+from exa_py import Exa
 from langchain_openai import ChatOpenAI
 from langchain_community.utilities import ArxivAPIWrapper
 
+import os, requests, json
+from pydantic import BaseModel, Field, constr
+from crewai.tools import BaseTool
+from typing import Type
+
 # ───────────────────────────────────────────────────────────────
-load_dotenv()                         # EXA_API_KEY, S2_API_KEY must be set
+load_dotenv()                         # SERPAPI_API_KEY, S2_API_KEY must be set
 OPENAI_MODEL = "gpt-4o-mini"
 
 # ────────────────────────── generic schema ─────────────────────
 class SearchInput(BaseModel):
-    query: str = Field(..., description="Search text")
-    category: str | None = Field(
-        default=None,
-        description="Search the web"
+    """Minimal query-only payload."""
+    query: constr(strip_whitespace=True, min_length=1) = Field(
+        ..., description="Free-text search query."
     )
 
 # ────────────────────────── search tools ───────────────────────
 class ExaSearchTool(BaseTool):
     name: str = "exa_search"
-    description: str = "Search Exa for tutorials, videos,  blogs, GitHub, news, PDFs."
+    description: str = "Search Exa for tutorials, blogs, repos, PDFs."
     args_schema: Type[BaseModel] = SearchInput
-    def _run(self, query: str, **_) -> str:
-        body = {"query": query, "numResults": 5, "contents": {"text": True}}
-        cmd = [
-            "curl","-s","-X","POST","https://api.exa.ai/search",
-            "--header","content-type: application/json",
-            "--header",f"x-api-key: {os.getenv('EXA_API_KEY')}",
-            "--data",json.dumps(body),
-        ]
-        try:
-            resp = subprocess.run(cmd, capture_output=True, text=True, check=True)
-            return json.dumps(json.loads(resp.stdout), indent=2)
-        except Exception as e:
-            return f"[Exa search failed] {e}"
 
+    def _run(self, query: str, **_) -> str:
+
+        if isinstance(query, str) and query.strip().startswith("{"):
+            try:
+                query_obj = json.loads(query)
+                query = query_obj.get("query", "")
+            except Exception as e:
+                return f"[Exa input parsing error] {e}"
+        try:
+            exa = Exa(api_key=os.getenv("EXA_API_KEY"))
+            print(query)
+            results = exa.search_and_contents(
+                query,
+                type="neural",
+                num_results=5,
+                highlights=True,
+                livecrawl="always"
+            )
+
+            parsed = [
+                {
+                    "title": result.title,
+                    "url": result.url,
+                    "snippet": " ".join(result.highlights or ["(no highlights found)"])
+                }
+                for result in results.results
+            ]
+            return json.dumps(parsed, indent=2)
+        except Exception as e:
+            return f'[Exa search failed via SDK] {e}'
 class ArxivSearchTool(BaseTool):
     name: str = "arxiv_search"
     description: str = "Search arXiv for scholarly papers."
@@ -59,8 +81,10 @@ class SemanticScholarSearchTool(BaseTool):
     args_schema: Type[BaseModel] = SearchInput
     S2_ENDPOINT: str = "https://api.semanticscholar.org/graph/v1/paper/search"
     def _run(self, query: str, **_) -> str:
-        params = {"query": query, "limit": 5,
-                  "fields": "title,year,venue,authors,citationCount,url"}
+        params = {
+            "query": query, "limit": 5,
+            "fields": "title,year,venue,authors,citationCount,url"
+        }
         headers = {"x-api-key": os.getenv("S2_API_KEY")}
         try:
             r = requests.get(self.S2_ENDPOINT, params=params,
@@ -70,13 +94,25 @@ class SemanticScholarSearchTool(BaseTool):
         except Exception as e:
             return f"[Semantic Scholar search failed] {e}"
 
+enhancer = Agent(
+    role="Query Enhancer",
+    backstory=dedent("""
+        You are an expert at rewriting and expanding search queries for news and research. Your job is to take a user-provided topic and turn it into a clear, detailed, and effective search query that will yield the best results from search.
+    """),
+    goal="Rewrite or expand the topic into a more effective search query.",
+    tools=[],
+    llm=ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.4),
+    allow_delegation=False,
+    verbose=True,
+    max_iter=2,
+)
 # ────────────────────────── agents ─────────────────────────────
 router = Agent(
     role="Learning Router",
     backstory=(
         "You triage a learner’s topic and pick the best retrieval tool(s).\n"
         "• If it sounds like general learning (tutorial, how-to, basics, guide), "
-        "favour **exa_search** for blogs, docs, repos.\n"
+        "favour **serpapi_search** for blogs, docs, repos.\n"
         "• If it sounds like deep research (paper, benchmark, SOTA, citation), "
         "favour **arxiv_search** and **s2_search**.\n"
         "You may call several tools for a balanced view and return raw JSON."
@@ -86,18 +122,15 @@ router = Agent(
     allow_delegation=False, verbose=True, max_iter=4,
     llm=ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.4),
 )
+enhance_task = Task(
+    description=dedent("""
+        **Step 0 – Enhance the query for better search
+            Take the userprovided query and enhance to be more clear and detailed}**
 
-summariser = Agent(
-    role="Explainer",
-    backstory="Turns mixed sources into beginner-friendly explanations.",
-    goal=(
-        "Write clear, structured notes: plain English, minimum jargon, "
-        "include small code or real-world examples when helpful."
-    ),
-    tools=[], allow_delegation=False, verbose=True, max_iter=4,
-    llm=ChatOpenAI(model_name=OPENAI_MODEL, temperature=0.65),
+    """),
+    expected_output="A rewritten or expanded search query string.",
+    agent=enhancer,
 )
-
 # ────────────────────────── tasks ──────────────────────────────
 router_task = Task(
     description=dedent(
@@ -108,42 +141,23 @@ router_task = Task(
 
         • Decide whether this looks like a *general learning* request or a
           *research-level* request (inspect keywords).
-        • Prefer **exa_search** for tutorials / guides, **arxiv_search** + **s2_search**
+        • Prefer **serpapi_search** for tutorials / guides, **arxiv_search** + **s2_search**
           for research. Use both categories if helpful.
         • Return a JSON list called `sources` each item:
 
           {"title": "...", "url": "...", "snippet": "...",
-           "source": "exa|arxiv|s2"}
+           "source": "serpapi|arxiv|s2"}
         """
     ),
     expected_output="JSON list of 5–10 sources.",
     agent=router,
-)
-
-summary_task = Task(
-    description=dedent(
-        """
-        **Step 2 – Beginner-friendly summary**
-
-        For every item in `router_output.json`, craft a Markdown block:
-
-        ### [Title]
-        • **What it covers:** …  
-        • **Key insight:** …  
-        • **Example / Analogy:** …
-
-        Keep each block ≈80 words; aim for clarity over completeness.
-        """
-    ),
-    expected_output="Markdown notes for each source.",
-    agent=summariser,
-    context=[router_task],
+    context={enhance_task}
 )
 
 # ────────────────────────── crew ───────────────────────────────
 crew = Crew(
-    agents=[router, summariser],
-    tasks=[router_task, summary_task],
+    agents=[enhancer, router],
+    tasks=[enhance_task,router_task],
     process=Process.sequential,
     verbose=True,
 )
@@ -151,12 +165,12 @@ crew = Crew(
 # ────────────────────────── entry point ────────────────────────
 def run(topic: str):
     inputs = {"topic": topic, "current_date": datetime.now().strftime("%Y-%m-%d")}
-    final = crew.kickoff(inputs=inputs)
-    print("\n\n### SUMMARY NOTES ###\n", summary_task.output)
+    final = crew.kickoff(inputs={"topic": topic})
+    print("\n\n### SUMMARY NOTES ###\n", router_task.output)
     if router_task.output_file:
         with open(router_task.output_file) as f:
             print(f"\n--- {router_task.output_file} ---\n{f.read()}")
-    return {"summary": summary_task.output, "sources": router_task.output_file}
+    return {"summary": router_task.output}
 
 if __name__ == "__main__":
     print(run("Getting started with convolutional neural networks"))
