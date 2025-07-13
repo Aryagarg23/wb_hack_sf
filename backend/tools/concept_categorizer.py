@@ -2,6 +2,7 @@ from langchain_openai import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from dotenv import load_dotenv
+from backend.tools.chaap_anonymize import SimplePIIObfuscator
 import os
 
 load_dotenv()
@@ -18,6 +19,9 @@ def get_concept(sentence):
     Sentence: "{input}"
     Concept:"""
     )
+
+    obfuscator = SimplePIIObfuscator()
+    sentence = obfuscator.quick_scrub(text=sentence)
 
     llm = ChatOpenAI(model='gpt-4o-mini', temperature=0, api_key=OPENAI_API_KEY)
     concept_chain = LLMChain(llm=llm, prompt=prompt)
