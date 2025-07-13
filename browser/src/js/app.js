@@ -82,6 +82,9 @@ class App {
     // Menu Button Toggle
     this.setupMenuButton();
     
+    // Network Button Toggle
+    this.setupNetworkButton();
+    
     // Webview Handling
     this.setupWebview();
     
@@ -291,6 +294,315 @@ class App {
           this.setSidebarVisible(true);
         }
       });
+    }
+  }
+
+  setupNetworkButton() {
+    const networkButton = document.querySelector('.network-button');
+    const networkModal = document.getElementById('network-modal');
+    
+    if (networkButton && networkModal) {
+      networkButton.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Show the network modal
+        networkModal.classList.add('is-visible');
+        networkButton.classList.add('is-active');
+        
+        // Update network information
+        this.updateNetworkInfo();
+      });
+      
+      // Close modal when clicking the overlay
+      const overlay = networkModal.querySelector('.network-modal__overlay');
+      if (overlay) {
+        overlay.addEventListener('click', () => {
+          networkModal.classList.remove('is-visible');
+          networkButton.classList.remove('is-active');
+        });
+      }
+      
+      // Close modal with Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && networkModal.classList.contains('is-visible')) {
+          networkModal.classList.remove('is-visible');
+          networkButton.classList.remove('is-active');
+        }
+      });
+      
+      // Setup action buttons
+      this.setupNetworkActions();
+    }
+  }
+
+  updateNetworkInfo() {
+    // Update connection status
+    const connectionStatus = document.getElementById('connection-status');
+    if (connectionStatus) {
+      if (navigator.onLine) {
+        connectionStatus.textContent = 'Connected';
+        connectionStatus.style.color = '#22c55e';
+      } else {
+        connectionStatus.textContent = 'Disconnected';
+        connectionStatus.style.color = '#ef4444';
+      }
+    }
+    
+    // Update network type
+    const networkType = document.getElementById('network-type');
+    if (networkType) {
+      if ('connection' in navigator) {
+        const connection = navigator.connection;
+        if (connection.effectiveType) {
+          networkType.textContent = connection.effectiveType.toUpperCase();
+        } else {
+          networkType.textContent = 'Unknown';
+        }
+      } else {
+        networkType.textContent = 'Unknown';
+      }
+    }
+    
+    // Update network graph
+    this.updateNetworkGraph();
+  }
+
+
+
+  setupNetworkActions() {
+    const refreshButton = document.getElementById('refresh-network');
+    
+    if (refreshButton) {
+      refreshButton.addEventListener('click', () => {
+        this.updateNetworkInfo();
+        this.updateNetworkGraph();
+      });
+    }
+  }
+
+  updateNetworkGraph() {
+    const container = document.getElementById('network-graph');
+    if (!container || typeof d3 === 'undefined') return;
+
+    // Clear existing content
+    container.innerHTML = '';
+    // Remove any existing HTML legend
+    const oldLegend = document.getElementById('network-graph-legend');
+    if (oldLegend) oldLegend.remove();
+
+    // Add HTML legend (fixed in bottom left)
+    const htmlLegend = document.createElement('div');
+    htmlLegend.id = 'network-graph-legend';
+    htmlLegend.style.position = 'absolute';
+    htmlLegend.style.left = '24px';
+    htmlLegend.style.bottom = '24px';
+    htmlLegend.style.background = 'rgba(30, 41, 59, 0.85)';
+    htmlLegend.style.borderRadius = '8px';
+    htmlLegend.style.padding = '12px 18px';
+    htmlLegend.style.display = 'flex';
+    htmlLegend.style.flexDirection = 'column';
+    htmlLegend.style.gap = '10px';
+    htmlLegend.style.boxShadow = '0 2px 8px rgba(0,0,0,0.10)';
+    htmlLegend.style.zIndex = '10';
+    htmlLegend.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#6366f1;"></span><span style="color:#fff;font-weight:600;">Concept</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#10b981;"></span><span style="color:#fff;font-weight:600;">Query</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:18px;height:18px;border-radius:50%;background:#f59e42;"></span><span style="color:#fff;font-weight:600;">Link</span></div>
+    `;
+    container.style.position = 'relative';
+    container.appendChild(htmlLegend);
+
+    // Add event listener for X button to close modal
+    const modal = document.getElementById('network-modal');
+    const closeBtn = modal.querySelector('.network-modal__close');
+    if (closeBtn) {
+      closeBtn.onclick = () => {
+        modal.classList.remove('is-visible');
+        // Optionally, remove .is-active from network button if needed
+        const networkButton = document.querySelector('.network-button');
+        if (networkButton) networkButton.classList.remove('is-active');
+      };
+    }
+
+    // Sample data with three types: concept, query, link
+    const nodes = [
+      { id: 1, name: 'Photosynthesis', type: 'concept' },
+      { id: 2, name: 'What is photosynthesis?', type: 'query' },
+      { id: 3, name: 'Wikipedia', type: 'link' },
+      { id: 4, name: 'Chlorophyll', type: 'concept' },
+      { id: 5, name: 'How does chlorophyll work?', type: 'query' },
+      { id: 6, name: 'Britannica', type: 'link' },
+      { id: 7, name: 'Light Energy', type: 'concept' },
+      { id: 8, name: 'Energy Conversion', type: 'concept' },
+      { id: 9, name: 'Research Paper', type: 'link' }
+    ];
+    const links = [
+      { source: 1, target: 2 },
+      { source: 2, target: 3 },
+      { source: 1, target: 4 },
+      { source: 4, target: 5 },
+      { source: 5, target: 6 },
+      { source: 1, target: 7 },
+      { source: 7, target: 8 },
+      { source: 8, target: 9 }
+    ];
+
+    // Create SVG
+    const width = container.clientWidth;
+    const height = container.clientHeight;
+
+    const svg = d3.select(container)
+      .append('svg')
+      .attr('width', width)
+      .attr('height', height)
+      .call(
+        d3.zoom()
+          .scaleExtent([0.2, 2])
+          .on('zoom', (event) => {
+            g.attr('transform', event.transform);
+          })
+      );
+
+    // Create a group for all graph elements (for zoom/pan)
+    const g = svg.append('g')
+      .attr('class', 'graph-group');
+
+    // Draw links (edges)
+    const link = g.append('g')
+      .attr('stroke', '#bbb')
+      .attr('stroke-width', 1.5)
+      .selectAll('line')
+      .data(links)
+      .enter()
+      .append('line');
+
+    // Draw nodes (circles)
+    const node = g.append('g')
+      .selectAll('circle')
+      .data(nodes)
+      .enter()
+      .append('circle')
+      .attr('r', 18)
+      .attr('fill', d => {
+        if (d.type === 'concept') return '#6366f1';   // Indigo
+        if (d.type === 'query')   return '#10b981';   // Emerald
+        if (d.type === 'link')    return '#f59e42';   // Orange
+        return '#3b82f6';
+      })
+      .attr('stroke', '#fff')
+      .attr('stroke-width', 2)
+      .call(d3.drag()
+        .on('start', dragstarted)
+        .on('drag', dragged)
+        .on('end', dragended)
+      );
+
+    // Draw labels
+    const label = g.append('g')
+      .selectAll('text')
+      .data(nodes)
+      .enter()
+      .append('text')
+      .attr('text-anchor', 'middle')
+      .attr('dy', 4)
+      .attr('font-size', 12)
+      .attr('fill', '#222')
+      .text(d => d.name);
+
+    // D3 simulation
+    const simulation = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(links).id(d => d.id).distance(120))
+      .force('charge', d3.forceManyBody().strength(-400))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .on('tick', ticked);
+
+    // Set initial zoom transform (zoomed out)
+    svg.call(
+      d3.zoom().transform,
+      d3.zoomIdentity.translate(width / 2 * 0.3, height / 2 * 0.3).scale(0.7)
+    );
+
+    function ticked() {
+      link
+        .attr('x1', d => d.source.x)
+        .attr('y1', d => d.source.y)
+        .attr('x2', d => d.target.x)
+        .attr('y2', d => d.target.y);
+
+      node
+        .attr('cx', d => d.x)
+        .attr('cy', d => d.y);
+
+      label
+        .attr('x', d => d.x)
+        .attr('y', d => d.y);
+    }
+
+    // Drag functions
+    function dragstarted(event, d) {
+      if (!event.active) simulation.alphaTarget(0.3).restart();
+      d.fx = d.x;
+      d.fy = d.y;
+    }
+    function dragged(event, d) {
+      d.fx = event.x;
+      d.fy = event.y;
+    }
+    function dragended(event, d) {
+      if (!event.active) simulation.alphaTarget(0);
+      d.fx = null;
+      d.fy = null;
+    }
+  }
+
+  generateNetworkData(isOnline) {
+    if (isOnline) {
+      // Online network topology
+      return {
+        nodes: [
+          { id: 1, name: 'Internet', type: 'internet', x: 150, y: 30 },
+          { id: 2, name: 'Firewall', type: 'security', x: 150, y: 80 },
+          { id: 3, name: 'Router', type: 'router', x: 150, y: 130 },
+          { id: 4, name: 'Switch 1', type: 'switch', x: 80, y: 180 },
+          { id: 5, name: 'Switch 2', type: 'switch', x: 220, y: 180 },
+          { id: 6, name: 'PC 1', type: 'device', x: 50, y: 230 },
+          { id: 7, name: 'PC 2', type: 'device', x: 110, y: 230 },
+          { id: 8, name: 'Server', type: 'server', x: 170, y: 230 },
+          { id: 9, name: 'Laptop', type: 'device', x: 250, y: 230 },
+          { id: 10, name: 'Mobile', type: 'device', x: 290, y: 180 }
+        ],
+        links: [
+          { source: 1, target: 2, strength: 1.0 },
+          { source: 2, target: 3, strength: 1.0 },
+          { source: 3, target: 4, strength: 0.8 },
+          { source: 3, target: 5, strength: 0.8 },
+          { source: 4, target: 6, strength: 0.6 },
+          { source: 4, target: 7, strength: 0.6 },
+          { source: 5, target: 8, strength: 0.7 },
+          { source: 5, target: 9, strength: 0.6 },
+          { source: 3, target: 10, strength: 0.5 }
+        ]
+      };
+    } else {
+      // Offline network topology (local network only)
+      return {
+        nodes: [
+          { id: 1, name: 'Router', type: 'router', x: 150, y: 100 },
+          { id: 2, name: 'Switch', type: 'switch', x: 150, y: 150 },
+          { id: 3, name: 'PC 1', type: 'device', x: 80, y: 200 },
+          { id: 4, name: 'PC 2', type: 'device', x: 150, y: 200 },
+          { id: 5, name: 'Laptop', type: 'device', x: 220, y: 200 },
+          { id: 6, name: 'Printer', type: 'device', x: 150, y: 250 }
+        ],
+        links: [
+          { source: 1, target: 2, strength: 0.8 },
+          { source: 2, target: 3, strength: 0.6 },
+          { source: 2, target: 4, strength: 0.6 },
+          { source: 2, target: 5, strength: 0.6 },
+          { source: 2, target: 6, strength: 0.4 }
+        ]
+      };
     }
   }
 

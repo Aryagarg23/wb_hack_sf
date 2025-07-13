@@ -23,6 +23,8 @@
     <link rel="stylesheet" href="styles/06-components/_nav-controls.css" />
     <link rel="stylesheet" href="styles/06-components/_sidebar.css" />
     <link rel="stylesheet" href="styles/06-components/_buffer-button.css" />
+    <link rel="stylesheet" href="styles/06-components/_network-button.css" />
+    <link rel="stylesheet" href="styles/06-components/_network-modal.css" />
     <link rel="stylesheet" href="styles/06-components/_window-controls-macos.css" />
     <!-- ITCSS: Platforms -->
     <link rel="stylesheet" href="styles/07-platforms/_macos.css" />
@@ -48,8 +50,12 @@
       
       <!-- Right side controls -->
       <div class="header__controls-right">
+        <!-- Network button -->
+        <div id="network-button-container"></div>
+        
         <!-- Menu button -->
         <div id="menu-button-container"></div>
+        
         
         <!-- Window controls will be inserted here -->
         <div id="window-controls-container"></div>
@@ -75,6 +81,11 @@
       </main>
     </div>
 
+    <!-- Network Modal -->
+    <div id="network-modal-container"></div>
+
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- JavaScript -->
     <script src="js/components.js"></script>
     <script src="js/app.js"></script>

@@ -87,7 +87,9 @@ class ComponentManager {
       'menu-button',
       'webview',
       'sidebar',
-      'buffer-button' // Add the new buffer button component
+      'buffer-button', // Add the new buffer button component
+      'network-button', // Add the new network button component
+      'network-modal' // Add the new network modal component
     ];
 
     for (const name of componentNames) {
@@ -103,6 +105,8 @@ class ComponentManager {
     this.insertComponent('window-controls-container', this.platform === 'darwin' ? 'window-controls-macos' : 'window-controls');
     this.insertComponent('webview-container', 'webview');
     this.insertComponent('buffer-button-container', 'buffer-button'); // Insert buffer button
+    this.insertComponent('network-button-container', 'network-button'); // Insert network button
+    this.insertComponent('network-modal-container', 'network-modal'); // Insert network modal
 
     // Setup platform-specific layout
     this.setupPlatformSpecificLayout();
