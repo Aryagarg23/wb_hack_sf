@@ -6,6 +6,11 @@
   "scripts": {
     "start": "electron ."
   },
+  "build": {
+    "appId": "com.gyrus.browser",
+    "productName": "Gyrus Browser",
+    "icon": "src/components/gyrus_icon.png"
+  },
   "keywords": [
     "electron",
     "browser"

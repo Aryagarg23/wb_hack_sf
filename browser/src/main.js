@@ -7,6 +7,7 @@ function createWindow() {
     width: 1200,
     height: 800,
     frame: false,
+    icon: path.join(__dirname, 'components', 'gyrus_icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -53,6 +54,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Set the dock/taskbar icon
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(path.join(__dirname, 'components', 'gyrus_icon.png'));
+  }
+  
   createWindow();
 
   app.on('activate', function () {
