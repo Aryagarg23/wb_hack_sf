@@ -128,7 +128,7 @@ def retrieve_all_links_to_query(query: Query):
 
     return result
 
-def retrieve_all_links_to_concept(concept: Concept):
+def retrieve_all_links_to_concept(concept):
     cypher_query = """
     MATCH (n:Concept {name: $concept_name})
     MATCH (m:Query)
@@ -137,15 +137,46 @@ def retrieve_all_links_to_concept(concept: Concept):
     RETURN l
     """
     parameters = {
-        "concept_name": concept.getName()
+        "concept_name": concept
     }
 
     result = run_db_query(cypher_query, parameters)
 
     return(result)
 
+def retrieve_graph():
+    cypher_query = """
+    MATCH (n)
+    WHERE n:Concept OR n:Query OR n:Link
+    OPTIONAL MATCH (n)-[r]->(m)
+    WHERE m:Concept OR m:Query OR m:Link
+    RETURN n, r, m
+    """
+    result = run_db_query(cypher_query)
+
+    nodes = []
+    relationships = []
+
+    for record in result:
+        n = record["n"]
+        m = record["m"]
+        r = record["r"]
+
+        nodes.append(n)
+        nodes.append(m)
+        relationships.append(r)
+
+
+    return {
+        "nodes": list(nodes),
+        "relationships": relationships
+    }
+
+
+
 # if __name__ == "__main__":
 #     q = Query('My breadboard is broken, how do I fix it?', intent='Informational')
 #     print(find_similar_concepts(q))
     # q = Query('How to make sourdough', intent='Informational')
     # print(create_concept(q))
+    # print(retrieve_graph())
