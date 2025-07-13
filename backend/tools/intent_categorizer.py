@@ -29,6 +29,19 @@ def concept_parser(concepts):
 
     return string
 
+def agent_output_parser(agent_output):
+    separated = agent_output.split('\n')
+    baseline = {"Research": 0, "Answer": 0, "Transactional": 0, "News": 0, "Navigational": 0}
+
+    for value in separated:
+        vals = value.split(':')
+        key = vals[0]
+        val = float(vals[1].strip())
+
+        baseline[key] = val
+
+    return baseline
+
 
 def get_intent(sentence):
     query = Query(sentence, intent='')
@@ -36,7 +49,7 @@ def get_intent(sentence):
     prompt_template = PromptTemplate(
         input_variables=["sentence", "concepts"],
         template="""
-        You are an expert in intent-classification. You have the following intents to classify between:
+        You are an expert in intent-classification. You have the following intents to rate confidence in each of them:
         1. Research: {research}
         2. Answer: {answer}
         3. Transactional: {transactional}
@@ -49,7 +62,8 @@ def get_intent(sentence):
         The data that will be given from the database includes closest related concepts previously searched,
         the intent behind those searches and how similar they are to the current query.
 
-        Respond with ONLY the intent, no explanation.
+        Respond with ONLY the probabilities for each intent in line-by-line format, no explanation.
+
 
         Sentence: "{sentence}"
         Related Concepts in Database:
@@ -77,5 +91,7 @@ def get_intent(sentence):
         "navigational": intent_label_map["Navigational"],
     })
 
-    return result.strip()
-print(get_intent("What is a good recall score for an unsupervised model?"))
+
+
+    return agent_output_parser(result.strip())
+print(get_intent("Unsupervised training models"))
