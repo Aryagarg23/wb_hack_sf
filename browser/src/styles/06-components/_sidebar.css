@@ -1,0 +1,186 @@
+/* -------------------------------------------------------------------------- */
+/*                         06-components/_sidebar.css                         */
+/* -------------------------------------------------------------------------- */
+
+.sidebar {
+  position: relative; /* Change from fixed to relative for normal document flow */
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0; /* Start fully hidden */
+  background-color: var(--color-base);
+  z-index: 1000;
+  overflow: hidden; /* Hide content that exceeds the width */
+  transition: width var(--transition-duration-normal) var(--transition-easing), opacity var(--transition-duration-normal) var(--transition-easing);
+  opacity: 0; /* Start invisible */
+  flex-shrink: 0; /* Don't allow sidebar to shrink */
+}
+
+/* Fake background element for consistent hover detection */
+.sidebar-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: transparent;
+  z-index: 0;
+  pointer-events: none; /* Disable pointer events to allow clicks to pass through */
+  width: 200px; /* Full sidebar width */
+}
+
+.sidebar.is-visible {
+  width: 200px; /* Expand to full width */
+  opacity: 1; /* Make visible */
+}
+
+.sidebar__content {
+  width: 200px; /* Fixed width for the content area */
+  padding: 20px;
+  opacity: 0; /* Hidden by default */
+  transition: opacity var(--transition-duration-normal) var(--transition-easing);
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.sidebar.is-visible .sidebar__content {
+  opacity: 1;
+  transition-delay: 0s; /* No delay - sync with header */
+}
+
+/* Sidebar header */
+.sidebar__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-light-shadow);
+}
+
+.sidebar__title {
+  font-family: var(--font-family-primary);
+  font-size: 14px;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.sidebar__add-tab {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background-color: var(--color-base);
+  color: var(--color-text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-neumorphic);
+  transition: all var(--transition-duration-fast) var(--transition-easing);
+  -webkit-app-region: no-drag;
+}
+
+.sidebar__add-tab:hover {
+  color: var(--color-accent);
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+.sidebar__add-tab:active {
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+/* Tab list */
+.sidebar__tab-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Individual tab */
+.sidebar__tab {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background-color: var(--color-base);
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow-neumorphic);
+  transition: all var(--transition-duration-fast) var(--transition-easing);
+  -webkit-app-region: no-drag;
+  position: relative;
+}
+
+.sidebar__tab:hover {
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+.sidebar__tab.is-active {
+  box-shadow: var(--shadow-neumorphic-inset);
+  background-color: var(--color-accent);
+  color: white;
+}
+
+.sidebar__tab-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.sidebar__tab-title {
+  flex: 1;
+  font-family: var(--font-family-primary);
+  font-size: 12px;
+  font-weight: var(--font-weight-regular);
+  color: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+.sidebar__tab-close {
+  width: 18px;
+  height: 18px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  opacity: 0.6;
+  transition: opacity var(--transition-duration-fast) var(--transition-easing);
+  flex-shrink: 0;
+}
+
+.sidebar__tab-close:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.sidebar__tab-close::before,
+.sidebar__tab-close::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 87%;
+  width: 12px;
+  height: 2px;
+  background-color: currentColor;
+  border-radius: 1px;
+}
+
+.sidebar__tab-close::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.sidebar__tab-close::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+} 

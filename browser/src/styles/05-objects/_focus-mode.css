@@ -1,0 +1,24 @@
+/* -------------------------------------------------------------------------- */
+/*                        05-objects/_focus-mode.css                        */
+/* -------------------------------------------------------------------------- */
+
+.focus-overlay {
+  position: fixed;
+  inset: 0; /* Cover the entire viewport */
+  background-color: rgba(30, 30, 40, 0.5); /* A dark, semi-transparent color */
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000;
+  
+  /* Hidden by default */
+  opacity: 0;
+  pointer-events: none;
+  
+  /* Smooth transition */
+  transition: opacity var(--transition-duration-normal) ease-in-out;
+}
+
+.focus-overlay.is-active {
+  opacity: 1;
+  /* Don't enable pointer-events, allow clicks to pass through to the query input if needed, or to dismiss */
+} 
