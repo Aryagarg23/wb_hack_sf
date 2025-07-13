@@ -619,8 +619,7 @@ class App {
       // Escape key to exit editor mode
       if (e.key === 'Escape' && queryInput_container.classList.contains('is-editor-mode')) {
         e.preventDefault();
-        queryInput_container.classList.remove('is-editor-mode');
-        focusOverlay?.classList.remove('is-active');
+        toggleEditorMode();
         queryInput_textArea.blur();
         return;
       }
