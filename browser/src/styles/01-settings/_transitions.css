@@ -1,0 +1,9 @@
+/* -------------------------------------------------------------------------- */
+/*                      01-settings/_transitions.css                      */
+/* -------------------------------------------------------------------------- */
+ 
+:root {
+  --transition-duration-fast: 0.1s;
+  --transition-duration-normal: 0.2s;
+  --transition-easing: ease-in-out;
+} 

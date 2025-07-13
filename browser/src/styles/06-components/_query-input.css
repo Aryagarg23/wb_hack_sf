@@ -1,0 +1,135 @@
+/* -------------------------------------------------------------------------- */
+/*                       06-components/_query-input.css                     */
+/* -------------------------------------------------------------------------- */
+
+.query-input-container {
+  /* Neumorphic Style & Shape */
+  background-color: var(--color-base);
+  box-shadow: var(--shadow-neumorphic);
+  border-radius: 9999px; /* Perfect pill shape */
+  
+  /* Sizing, Layout */
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 250px;
+  max-width: 600px;
+  padding: var(--space-4) var(--space-5); /* More vertical padding */
+  position: relative; /* Needed for z-index */
+  
+  /* Smooth Growth Animation & Transitions */
+  transition: 
+    box-shadow var(--transition-duration-normal) ease;
+}
+
+.query-input__text-area {
+  /* Reset and Font */
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--color-text-primary);
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-bold);
+  
+  /* Sizing */
+  flex-grow: 1;
+  min-height: 25px; /* Base height */
+  
+  /* Behavior */
+  cursor: text;
+  word-wrap: break-word; /* Ensure long words wrap */
+  text-align: left; /* Better for multi-line text */
+  transition: height var(--transition-duration-normal) ease; /* Smoothly animate height changes */
+  overflow: hidden; /* Hide the scrollbar */
+}
+
+/* Placeholder simulation */
+.query-input__text-area[data-placeholder]:empty:before {
+  content: attr(data-placeholder);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}
+
+.query-input-container.is-editor-mode {
+  border-radius: 20px; /* More rectangular */
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 800px;
+  z-index: 2001; /* Ensure it's above the focus overlay */
+}
+
+.query-input-container.is-editor-mode .query-input__text-area {
+  width: 100%;
+  min-height: 250px; /* Taller editor */
+  margin-bottom: 10px; /* Space between text and buttons */
+  background: transparent; /* Make the editor itself invisible */
+  padding: 10px; /* Add padding inside the editor */
+  box-sizing: border-box; /* Ensure padding is included in height */
+}
+
+.query-input-container.is-editor-mode .query-input__controls {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+}
+
+.query-input-container.is-editor-mode .query-input__send-button {
+  display: block; /* Show the send button */
+}
+
+.query-input-container.is-active {
+  box-shadow: var(--shadow-neumorphic-inset);
+}
+
+.query-input__attach-button {
+  /* Reset and Sizing */
+  background: transparent;
+  border: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  /* Style */
+  color: var(--color-text-secondary);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all var(--transition-duration-fast) ease-in-out;
+}
+
+.query-input__attach-button:hover {
+  color: var(--color-accent);
+  background-color: rgba(0,0,0,0.05);
+}
+
+.query-input__attach-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.query-input__send-button {
+  display: none; /* Hidden by default */
+  /* Neumorphic Button Style */
+  background-color: var(--color-base);
+  color: var(--color-text-secondary);
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  box-shadow: var(--shadow-neumorphic);
+  transition: box-shadow var(--transition-duration-fast) ease-in-out;
+}
+
+.query-input__send-button:hover {
+  color: var(--color-accent);
+}
+
+.query-input__send-button:active {
+  box-shadow: var(--shadow-neumorphic-inset);
+}

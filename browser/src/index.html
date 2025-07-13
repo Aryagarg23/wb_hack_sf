@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0" />
+    <title>Electron Browser</title>
+    <!-- ITCSS: Settings -->
+    <link rel="stylesheet" href="styles/01-settings/_colors.css" />
+    <link rel="stylesheet" href="styles/01-settings/_shadows.css" />
+    <link rel="stylesheet" href="styles/01-settings/_typography.css" />
+    <link rel="stylesheet" href="styles/01-settings/_spacing.css" />
+    <link rel="stylesheet" href="styles/01-settings/_transitions.css" />
+    <!-- ITCSS: Elements -->
+    <link rel="stylesheet" href="styles/04-elements/_base.css" />
+    <!-- ITCSS: Objects -->
+    <link rel="stylesheet" href="styles/05-objects/_layout.css" />
+    <link rel="stylesheet" href="styles/05-objects/_focus-mode.css" />
+    <!-- ITCSS: Components -->
+    <link rel="stylesheet" href="styles/06-components/_webview.css" />
+    <link rel="stylesheet" href="styles/06-components/_window-controls.css" />
+    <link rel="stylesheet" href="styles/06-components/_url-bar.css" />
+    <link rel="stylesheet" href="styles/06-components/_menu-button.css" />
+    <link rel="stylesheet" href="styles/06-components/_nav-controls.css" />
+    <link rel="stylesheet" href="styles/06-components/_sidebar.css" />
+    <link rel="stylesheet" href="styles/06-components/_buffer-button.css" />
+    <link rel="stylesheet" href="styles/06-components/_window-controls-macos.css" />
+    <!-- ITCSS: Platforms -->
+    <link rel="stylesheet" href="styles/07-platforms/_macos.css" />
+    <link rel="stylesheet" href="styles/07-platforms/_windows.css" />
+  </head>
+  <body>
+    <!-- Focus overlay for editor mode -->
+    <div class="focus-overlay"></div>
+
+    <!-- Main header -->
+    <header class="app-header">
+      <!-- Drag button that covers entire header area -->
+      <button class="header-drag-button" type="button"></button>
+      
+      <!-- Buffer button for stable hover detection -->
+      <div id="buffer-button-container"></div>
+      
+      <!-- Navigation controls will be inserted here -->
+      <div id="nav-controls-container"></div>
+      
+      <!-- URL bar -->
+      <div id="url-bar-container"></div>
+      
+      <!-- Right side controls -->
+      <div class="header__controls-right">
+        <!-- Menu button -->
+        <div id="menu-button-container"></div>
+        
+        <!-- Window controls will be inserted here -->
+        <div id="window-controls-container"></div>
+      </div>
+    </header>
+
+    <!-- Main container for sidebar and content -->
+    <div class="main-container">
+      <!-- Sidebar component -->
+      <div id="sidebar-container"></div>
+
+      <!-- Main content area -->
+      <main class="content-area">
+        <!-- Hover detection zones -->
+        <div class="hover-detection-zone hover-detection-zone--top"></div>
+        <div class="hover-detection-zone hover-detection-zone--left"></div>
+        
+        <!-- Test button for tab creation -->
+    
+        
+        <!-- Webview component -->
+        <div id="webview-container"></div>
+      </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/components.js"></script>
+    <script src="js/app.js"></script>
+  </body>
+</html> 

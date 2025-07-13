@@ -1,0 +1,15 @@
+:root {
+  /* Base Pastel Material (Soft Lavender) */
+  --color-base: #f2f2f8;
+
+  /* Shadow & Highlight Colors (derived from base) */
+  --color-light-shadow: #ffffff;
+  --color-dark-shadow: #d0d0d8;
+
+  /* Text Colors */
+  --color-text-primary: #5b5b6e;
+  --color-text-secondary: #9a9aaf;
+  
+  /* Accent Color (for interactive states or highlights) */
+  --color-accent: #8e82ff;
+} 

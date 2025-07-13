@@ -1,0 +1,78 @@
+/* Webview Component */
+.browser-webview {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background-color: var(--color-base);
+  border-radius: 0; /* Remove border radius to fill completely */
+  box-shadow: none; /* Remove shadow since it fills the entire area */
+  transition: box-shadow var(--transition-duration-normal) var(--transition-easing);
+  position: absolute; /* Position absolutely to fill container */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: auto;
+}
+
+.browser-webview:hover {
+  /* Remove hover effect since webview fills the entire area */
+}
+
+/* Webview container to handle layout integration */
+.webview-container {
+  width: 100%;
+  height: 100%;
+  position: absolute; /* Position absolutely to fill entire content area */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-base);
+  border-radius: 0; /* Remove border radius to fill completely */
+  overflow: hidden;
+}
+
+/* Loading indicator */
+.webview-loading {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-text-secondary);
+  z-index: 2;
+  pointer-events: none; /* Don't interfere with webview interaction */
+}
+
+.webview-loading__spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-light-shadow);
+  border-top: 3px solid var(--color-accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.webview-loading__text {
+  font-family: var(--font-family-primary);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+}
+
+/* Hide loading when webview is ready */
+.browser-webview[data-ready="true"] + .webview-loading {
+  display: none;
+} 
