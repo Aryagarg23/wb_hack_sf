@@ -74,10 +74,16 @@ ipcMain.on('window-minimize', () => {
 ipcMain.on('window-maximize', () => {
   const window = BrowserWindow.getFocusedWindow();
   if (window) {
-    if (window.isMaximized()) {
-      window.unmaximize();
+    if (process.platform === 'darwin') {
+      // Toggle fullscreen on macOS
+      window.setFullScreen(!window.isFullScreen());
     } else {
-      window.maximize();
+      // Maximize/unmaximize on Windows/Linux
+      if (window.isMaximized()) {
+        window.unmaximize();
+      } else {
+        window.maximize();
+      }
     }
   }
 });

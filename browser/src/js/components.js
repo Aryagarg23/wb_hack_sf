@@ -85,6 +85,7 @@ class ComponentManager {
       'navigation-controls', 
       'url-bar',
       'menu-button',
+      'query-input',
       'webview',
       'sidebar',
       'buffer-button', // Add the new buffer button component
@@ -101,6 +102,7 @@ class ComponentManager {
     this.insertComponent('nav-controls-container', 'navigation-controls');
     this.insertComponent('url-bar-container', 'url-bar');
     this.insertComponent('menu-button-container', 'menu-button');
+    this.insertComponent('query-input-container', 'query-input');
     // Use the correct window controls component based on platform
     this.insertComponent('window-controls-container', this.platform === 'darwin' ? 'window-controls-macos' : 'window-controls');
     this.insertComponent('webview-container', 'webview');

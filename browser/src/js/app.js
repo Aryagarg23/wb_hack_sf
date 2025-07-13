@@ -78,6 +78,8 @@ class App {
     
     // Button Active State Handling
     this.setupButtonActiveStates();
+
+    this.setupQueryInput();
     
     // Menu Button Toggle
     this.setupMenuButton();
@@ -264,6 +266,96 @@ class App {
       });
     });
   }
+
+  setupQueryInput() {
+    const queryInput_container = document.querySelector('.query-input-container');
+    const queryInput_textArea = document.querySelector('.query-input__text-area');
+    const queryInput_sendButton = document.querySelector('.query-input__send-button');
+    const focusOverlay = document.querySelector('.focus-overlay');
+    const characterLimit = 50;
+
+    if (!queryInput_container || !queryInput_textArea) return;
+
+
+    const switchToEditorMode = () => {
+      if (!queryInput_container.classList.contains('is-editor-mode')) {
+        queryInput_container.classList.add('is-editor-mode');
+        focusOverlay?.classList.add('is-active');
+        adjustHeight(); // Re-check height after mode switch
+      }
+    };
+
+    const toggleEditorMode = () => {
+      queryInput_container.classList.toggle('is-editor-mode');
+      focusOverlay?.classList.toggle('is-active');
+      adjustHeight(); // Recalculate height after toggle
+    };
+
+    const submitQuery = () => {
+      // Simulate click on the container
+      queryInput_container.classList.add('is-active');
+      setTimeout(() => {
+        queryInput_container.classList.remove('is-active');
+      }, 150);
+      console.log('Query submitted:', queryInput_textArea.innerText);
+      // Here you would clear the input, etc.
+    };
+
+    // Smooth Growth & Mode Switching
+    const adjustHeight = () => {
+      queryInput_textArea.style.height = 'auto'; // Reset height to get correct scrollHeight
+      queryInput_textArea.style.height = (queryInput_textArea.scrollHeight) + 'px';
+      
+      // Switch to editor mode if character limit is reached
+      if (queryInput_textArea.innerText.length > characterLimit) {
+        switchToEditorMode();
+      }
+    };
+    
+    queryInput_textArea.addEventListener('input', adjustHeight);
+    
+    // Key-based Events
+    queryInput_textArea.addEventListener('keydown', (e) => {
+      // Toggle editor mode with Shift+Enter if below character limit
+      if (e.shiftKey && e.key === 'Enter') {
+        e.preventDefault();
+        if (queryInput_textArea.innerText.length <= characterLimit) {
+          toggleEditorMode();
+        }
+        return; // Stop further execution for this key event
+
+
+
+
+
+
+
+
+
+
+
+
+      }
+
+
+      // Submit with Enter only in pill mode
+      if (e.key === 'Enter' && !queryInput_container.classList.contains('is-editor-mode')) {
+        e.preventDefault(); 
+        submitQuery();
+
+
+
+
+      }
+    });
+
+    // Button Clicks
+    queryInput_sendButton?.addEventListener('click', submitQuery);
+
+
+
+  }
+
 
   setupMenuButton() {
     const menuButton = document.querySelector('.menu-button');
