@@ -8,3 +8,5 @@
 */.DS_STORE
 */dist/*
 browser/src/.DS_Store
+/backend/MCP/__pycache__
+/backend/tools/__pycache__
