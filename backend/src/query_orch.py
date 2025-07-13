@@ -95,7 +95,55 @@ def connect_links_to_query(query: Query, links_visited: List[Link]):
         # print(parameters)
         run_db_query(cypher_query, parameters)
 
+def retrieve_all_related_concepts(query: Query):
+    cypher_query = """
+    MATCH (n:Concept)
+    MATCH (m:Query {content: $query_content})
+    MATCH (n)-[r:SEARCHED_BY]-(m:Query)
+    RETURN n
+    """
+
+    parameters = {
+        "query_content": query.content
+    }
+
+    result = run_db_query(cypher_query, parameters)
+
+    return result
+
+
+def retrieve_all_links_to_query(query: Query):
+    cypher_query = """
+    MATCH (n:Query {content: $query_content})
+    MATCH (m:Link)
+    MATCH (n)-[r:CLICKED]-(m)
+    RETURN m
+    """
+
+    parameters = {
+        "query_content": query.content
+    }
+
+    result = run_db_query(cypher_query, parameters)
+
+    return result
+
+def retrieve_all_links_to_concept(concept: Concept):
+    cypher_query = """
+    MATCH (n:Concept {name: $concept_name})
+    MATCH (m:Query)
+    MATCH (l:Link)
+    MATCH (n)-[:SEARCHED_BY]-(m)-[:CLICKED]-(l)
+    RETURN l
+    """
+    parameters = {
+        "concept_name": concept.getName()
+    }
+
+    result = run_db_query(cypher_query, parameters)
+
+    return(result)
+
 # if __name__ == "__main__":
-#     a = Query('How to make sourdough', intent='Informational')
-#     links = [Link('https://google.com'), Link('https://www.aryagarg23.com')]
-#     print(connect_links_to_query(a, links))
+#     a = Concept(name='Baking', intent='Informational', embedding='')
+#     print(retrieve_all_links_to_concept(a))
