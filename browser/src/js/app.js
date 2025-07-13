@@ -182,6 +182,7 @@ class App {
   }
 
   createTab(url, title = 'New Tab', snippet = '') {
+    console.log('Creating new tab:', url, title, snippet);
     if (this.tasks.length === 0) {
       this.createTask('New Task');
     }
@@ -551,7 +552,7 @@ class App {
       
       try {
         // Call the fake backend API
-        const response = await fetch('http://localhost:3001/api/query', {
+        const response = await fetch('http://127.0.0.1:5000/api/search', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -566,14 +567,17 @@ class App {
         const data = await response.json();
         console.log('Backend response:', data);
         
-        if (data.success && data.links && data.links.length > 0) {
+        // Check if data is an array (direct response) or has a links property
+        const links = Array.isArray(data) ? data : (data.links || []);
+        
+        if (links && links.length > 0) {
           // Create a new task for this query
           const taskTitle = query.length > 30 ? query.substring(0, 30) + '...' : query;
-          const taskIcon = this.detectTaskIcon(data.links);
+          const taskIcon = this.detectTaskIcon(links);
           this.createTask(taskTitle, taskIcon);
           
           // Create tabs for each link under the new task
-          data.links.forEach((link, index) => {
+          links.forEach((link, index) => {
             this.createTab(link.link, link.title, link.snippet);
           });
           
@@ -584,7 +588,7 @@ class App {
           // Activate webview and collapse query input
           this.activateWebview();
           
-          console.log(`Created task "${taskTitle}" with ${data.links.length} tabs for query: "${query}"`);
+          console.log(`Created task "${taskTitle}" with ${links.length} tabs for query: "${query}"`);
         } else {
           console.error('Invalid response from backend:', data);
         }

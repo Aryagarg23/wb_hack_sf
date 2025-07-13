@@ -92,5 +92,5 @@ def consolidate(query, func):
 
     return retlist
 
-if __name__=="__main__":
-    print(consolidate('Latest news about quantum computing', run_news))
+# if __name__=="__main__":
+#     print(consolidate('Latest news about quantum computing', run_news))

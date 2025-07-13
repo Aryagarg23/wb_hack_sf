@@ -8,19 +8,22 @@ from typing import List
 # SINGULAR TRANSACTIONS TO MAIN GRAPH
 ################################################
 def find_similar_concepts(query: Query, top_k=5):
+    print("query", query)
     model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
     content = query.getContent()
+    print("content", content)
     relevant_concept = get_concept(content)
+    print("relevant_concept", relevant_concept)
     embedding = model.encode(relevant_concept).tolist()
-
+    print("embedding", embedding)
 
     db_query = """
             WITH $embedding AS queryEmbedding
             MATCH (c:Concept)
             WITH c,
-                REDUCE(dot = 0.0, i IN RANGE(0, SIZE(queryEmbedding)-1) | dot + queryEmbedding[i] * c.embedding[i]) AS dotProduct,
+                REDUCE(dot = 0.0, i IN RANGE(0, SIZE(queryEmbedding)-1) | dot + queryEmbedding[i] * c.embeds[i]) AS dotProduct,
                 SQRT(REDUCE(qSum = 0.0, i IN RANGE(0, SIZE(queryEmbedding)-1) | qSum + queryEmbedding[i]^2)) AS queryMagnitude,
-                SQRT(REDUCE(cSum = 0.0, i IN RANGE(0, SIZE(c.embedding)-1) | cSum + c.embedding[i]^2)) AS conceptMagnitude
+                SQRT(REDUCE(cSum = 0.0, i IN RANGE(0, SIZE(c.embeds)-1) | cSum + c.embeds[i]^2)) AS conceptMagnitude
             WITH c,
                 CASE
                     WHEN queryMagnitude = 0 OR conceptMagnitude = 0 THEN 0.0
@@ -46,7 +49,7 @@ def create_concept(query: Query):
 
     cypher_query = """
     MERGE (c:Concept {name: $concept_name})
-    ON CREATE SET c.intent = $intent, c.embedding = $embedding
+    ON CREATE SET c.intent = $intent, c.embeds = $embedding
 
     MERGE (q:Query {content: $query_content})
     ON CREATE SET q.intent = $intent
