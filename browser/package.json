@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "fake-backend": "cd fake_backend && npm start",
-    "dev": "concurrently \"npm run fake-backend\" \"npm start\""
+    "dev": "concurrently \"npm run fake-backend\" \"npm start\"",
+    "build": "electron-builder"
   },
   "build": {
     "appId": "com.gyrus.browser",
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "electron": "^31.0.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
     "eslint-plugin-html": "^8.1.3",

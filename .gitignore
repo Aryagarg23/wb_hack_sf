@@ -5,3 +5,6 @@
 /browser/fake_backend/dist
 /browser/fake_backend/build
 /browser/fake_backend/dist
+*/.DS_STORE
+*/dist/*
+browser/src/.DS_Store
