@@ -4,11 +4,13 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import LLMChain
 from backend.src.db_schema import Query
 from dotenv import load_dotenv
+from backend.tools.chaap_anonymize import SimplePIIObfuscator
 import os
 
 load_dotenv()
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+obfuscator = SimplePIIObfuscator()
 
 # For reference
 intent_label_map = {
@@ -44,7 +46,8 @@ def agent_output_parser(agent_output):
 
 
 def get_intent(sentence):
-    query = Query(sentence, intent='')
+    obfuscated_sentence = obfuscator.quick_scrub(sentence)
+    query = Query(obfuscated_sentence, intent='')
     similar_concepts = find_similar_concepts(query)
     prompt_template = PromptTemplate(
         input_variables=["sentence", "concepts"],

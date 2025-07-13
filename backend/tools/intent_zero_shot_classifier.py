@@ -3,6 +3,9 @@ from transformers import pipeline
 import torch
 import json
 from typing import List, Tuple, Dict
+from backend.tools.chaap_anonymize import SimplePIIObfuscator
+
+obfuscator = SimplePIIObfuscator()
 
 # This dictionary defines the intents and their detailed descriptions.
 # It's used to create meaningful candidate labels for the classifier.
@@ -90,6 +93,8 @@ def create_enhanced_candidates() -> Dict[str, List[str]]:
     }
 
 def classify_intent_zero_shot(query: str) -> str:
+    obfuscated_query = obfuscator.quick_scrub(text=query)
+
     """
     Classifies a single query string into one of the predefined intents using a 
     zero-shot learning model. It uses an ensemble of hypothesis templates for
