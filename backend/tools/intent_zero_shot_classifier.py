@@ -173,7 +173,7 @@ def classify_intent_zero_shot(query: str) -> str:
     }
     
     # Return the dictionary as a nicely formatted JSON string
-    return json.dumps(output_data, indent=4)
+    return output_data
 
 
     # single_query = "who is the current president of france"
