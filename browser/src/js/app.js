@@ -99,7 +99,7 @@ class App {
 
   initializeTabs() {
     // Create initial tab
-    this.createTab('https://www.google.com', 'Google');
+    this.createTab('about:blank', '');
   }
 
   setupTabManagement() {
@@ -120,7 +120,7 @@ class App {
           button.style.transform = '';
         }, 150);
         
-        this.createTab('https://www.google.com', 'New Tab');
+        this.createTab('about:blank', 'New Tab');
       }
     });
     
@@ -128,7 +128,7 @@ class App {
     document.addEventListener('keydown', (e) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         e.preventDefault();
-        this.createTab('https://www.google.com', 'New Tab');
+        this.createTab('about:blank', 'New Tab');
       }
     });
     
@@ -770,7 +770,7 @@ class App {
     });
 
     document.getElementById('home-btn')?.addEventListener('click', () => {
-      const homeUrl = 'https://www.google.com';
+      const homeUrl = 'about:blank';
       if (this.tabs[this.activeTabIndex]) {
         this.tabs[this.activeTabIndex].url = homeUrl;
       }

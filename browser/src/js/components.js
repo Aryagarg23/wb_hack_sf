@@ -116,4 +116,4 @@ class ComponentManager {
 }
 
 // Initialize component manager
-const componentManager = new ComponentManager(); 
+const componentManager = new ComponentManager();
