@@ -10,7 +10,9 @@ from typing import List
 def find_similar_concepts(query: Query, top_k=5):
     model = SentenceTransformer('all-MiniLM-L6-v2', use_auth_token=False)  # or another model
     content = query.getContent()
-    embedding = model.encode(content).tolist()
+    relevant_concept = get_concept(content)
+    embedding = model.encode(relevant_concept).tolist()
+
 
     db_query = """
             WITH $embedding AS queryEmbedding
@@ -60,8 +62,6 @@ def create_concept(query: Query):
     }
 
     run_db_query(cypher_query, parameters)
-
-    return concept
 
 def connect_concept_to_query(query: Query, concept: Concept):
     cypher_query = """
@@ -145,5 +145,7 @@ def retrieve_all_links_to_concept(concept: Concept):
     return(result)
 
 # if __name__ == "__main__":
-#     a = Concept(name='Baking', intent='Informational', embedding='')
-#     print(retrieve_all_links_to_concept(a))
+#     q = Query('My breadboard is broken, how do I fix it?', intent='Informational')
+#     print(find_similar_concepts(q))
+    # q = Query('How to make sourdough', intent='Informational')
+    # print(create_concept(q))
