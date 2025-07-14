@@ -4,6 +4,8 @@
   <img src="browser/src/components/gyrus_icon.png" alt="Gyrus Icon" width="64"/>
 </p>
 
+https://github.com/user-attachments/assets/02b633c0-783a-4aa4-b7f7-60a021f90381
+
 ## Technical Summary
 Gyrus is a privacy-first, AI-augmented browser that supports human thinking. It combines an Electron.js frontend with a Python backend orchestrating AI agents ("crews"), intent detection, and a memory graph. It uses fine-tuned models, privacy-preserving flows, and modular API integrations.
 
