@@ -11,7 +11,7 @@ Gyrus is a privacy-first, AI-augmented browser that supports human thinking. It 
 AI is everywhere, but over-reliance can dull critical thinking. Gyrus aims to *support* thought, not replace it, by embedding helpful AI in a browser.
 
 ## What It Does
-- Organizes thoughts and learning without doing all the thinking for you
+- Organizes thoughts and learning without doing all the thinking for you, using a knowledge graph
 - Uses "crews" (AI agent teams) to personalize your experience
 - Detects intent via a memory graph and zero-shot classifier
 - Guides research, study, and exploration
